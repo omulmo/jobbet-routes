@@ -18,3 +18,4 @@ When asked to commit, always do the following before running `git commit`:
 1. **Reflect** — Review what was learned or changed during this work session.
 2. **Update Memory Bank** — Update relevant `.kiro/memory-bank/` files (activeContext.md, systemPatterns.md, techContext.md, progress.md) with any new knowledge, decisions, patterns, or gotchas discovered.
 3. **Stage & Commit** — Stage all changes (including memory bank updates) and commit with a descriptive message.
+4. **Push** — Always `git push` immediately after committing.
