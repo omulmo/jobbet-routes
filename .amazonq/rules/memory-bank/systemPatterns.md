@@ -39,6 +39,7 @@ kiro-dev-workshop/
 - **Always use the project scripts for deployments** — never suggest raw CLI commands when a script exists:
   - `./setup-infrastructure.sh` for CDK/infrastructure deploys
   - `./deploy.sh lambda|frontend|all` for code deploys
+- **Never suggest adding `execute_bash` to `allowedTools`** — use `allowedCommands` regex whitelisting in `toolsSettings` instead
 - Use `./node_modules/.bin/cdk` instead of `npx cdk` (stdout issue)
 - `CDK_DEFAULT_ACCOUNT` derived from `aws sts get-caller-identity`, never hardcoded
 - Every change follows the development workflow checklist
