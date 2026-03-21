@@ -22,7 +22,7 @@ def fetch_trip(origin_id):
     url = (
         f"{API_BASE}?type_origin=any&name_origin={origin_id}"
         f"&type_destination=any&name_destination={DESTINATION_ID}"
-        f"&calc_number_of_trips=1&calc_one_direction=true"
+        f"&calc_number_of_trips=3&calc_one_direction=true"
     )
     with urllib.request.urlopen(url, timeout=10) as resp:
         return json.loads(resp.read())
@@ -39,48 +39,51 @@ def fmt_time(dt):
 def process_route(route):
     try:
         data = fetch_trip(route["origin_id"])
-        journey = data["journeys"][0]
-        legs = journey["legs"]
-
-        first_leg = legs[0]
-        last_leg = legs[-1]
-
-        departure = parse_time(
-            first_leg["origin"].get("departureTimeEstimated")
-            or first_leg["origin"]["departureTimePlanned"]
-        )
-        arrival = parse_time(
-            last_leg["destination"].get("arrivalTimeEstimated")
-            or last_leg["destination"]["arrivalTimePlanned"]
-        )
-        leave_by = departure - timedelta(minutes=route["walk_minutes"])
-
         now = datetime.now(TZ)
-        if leave_by < now:
-            logger.info("Route '%s' skipped: leave_by %s is in the past (now=%s)", route["name"], fmt_time(leave_by), fmt_time(now))
-            return None
 
-        transit_legs = []
-        for leg in legs:
-            if leg["transportation"].get("product", {}).get("name") in ("Gång", "footpath"):
-                transit_legs.append("🚶‍♂️‍➡️")
-            else:
-                transit_legs.append(
-                    leg["transportation"].get("disassembledName")
-                    or leg["transportation"].get("name", "?")
-                )
+        for journey in data.get("journeys", []):
+            legs = journey["legs"]
+            first_leg = legs[0]
+            last_leg = legs[-1]
 
-        return {
-            "name": route["name"],
-            "walk_minutes": route["walk_minutes"],
-            "leave_home_by": fmt_time(leave_by),
-            "departure": fmt_time(departure),
-            "arrival": fmt_time(arrival),
-            "transfers": journey.get("interchanges", 0),
-            "legs": transit_legs,
-            "fastest": False,
-            "_arrival_dt": arrival,
-        }
+            departure = parse_time(
+                first_leg["origin"].get("departureTimeEstimated")
+                or first_leg["origin"]["departureTimePlanned"]
+            )
+            arrival = parse_time(
+                last_leg["destination"].get("arrivalTimeEstimated")
+                or last_leg["destination"]["arrivalTimePlanned"]
+            )
+            leave_by = departure - timedelta(minutes=route["walk_minutes"])
+
+            if leave_by < now:
+                continue
+
+            transit_legs = []
+            for leg in legs:
+                if leg["transportation"].get("product", {}).get("name") in ("Gång", "footpath"):
+                    transit_legs.append("\U0001f6b6\u200d\u2642\ufe0f\u200d\u27a1\ufe0f")
+                else:
+                    transit_legs.append(
+                        leg["transportation"].get("disassembledName")
+                        or leg["transportation"].get("name", "?")
+                    )
+
+            return {
+                "name": route["name"],
+                "walk_minutes": route["walk_minutes"],
+                "leave_home_by": fmt_time(leave_by),
+                "departure": fmt_time(departure),
+                "arrival": fmt_time(arrival),
+                "transfers": journey.get("interchanges", 0),
+                "legs": transit_legs,
+                "fastest": False,
+                "_arrival_dt": arrival,
+                "_leave_by_dt": leave_by,
+            }
+
+        logger.info("Route '%s': no catchable trip found", route["name"])
+        return None
     except Exception:
         logger.exception("Route '%s' failed (origin_id=%s)", route["name"], route["origin_id"])
         return None
@@ -90,21 +93,29 @@ def handler(event, context):
     results = [r for r in (process_route(route) for route in ROUTES) if r]
     results.sort(key=lambda r: r["_arrival_dt"])
 
+    selected = []
     if results:
-        results[0]["fastest"] = True
+        fastest = results[0]
+        fastest["fastest"] = True
+        selected.append(fastest)
+        rest = results[1:]
+        if rest:
+            rest.sort(key=lambda r: r["_leave_by_dt"])
+            selected.append(rest[0])
 
-    for r in results:
+    for r in selected:
         del r["_arrival_dt"]
+        del r["_leave_by_dt"]
 
     body = {
         "generated_at": datetime.now(TZ).isoformat(),
-        "routes": results,
+        "routes": selected,
     }
-    if not results:
+    if not selected:
         body["error"] = "Could not fetch trip data"
         logger.warning("Zero routes returned")
 
-    logger.info("Returning %d route(s)", len(results))
+    logger.info("Returning %d route(s)", len(selected))
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},

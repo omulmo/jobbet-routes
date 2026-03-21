@@ -17,7 +17,11 @@ For each route option, the app shall display the estimated arrival time at the d
 Each route option shall include the estimated walking time from home to the departure stop. This ensures the user knows exactly when to walk out the door to catch the next departure.
 
 ### FR-4: Route Recommendation
-The app shall highlight the fastest route option — the one with the earliest arrival time at work — so the user can make a quick decision at a glance.
+The app shall return exactly two route options:
+1. The fastest route — the one with the earliest arrival time at work.
+2. The next departure — from the remaining routes, the one with the earliest "leave home by" time (regardless of arrival time).
+
+If only one valid route exists, only one is returned. The fastest route is visually highlighted so the user can make a quick decision at a glance.
 
 ### FR-5: Pull-Based Usage
 The app is pull-based. The user opens the app in a browser to check departure suggestions. There are no push notifications or background alerts.

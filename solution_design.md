@@ -215,8 +215,9 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
 3. Calculate "leave home by" = first leg departure time − walk_minutes
 4. Skip the route if "leave home by" is already in the past
 5. Sort remaining routes by earliest arrival time
-6. Flag the route with the earliest arrival as `fastest: true`
-7. Return JSON
+6. Select two routes: the fastest (earliest arrival), and from the rest, the one with the earliest "leave home by" time
+7. Flag the fastest route as `fastest: true`
+8. Return JSON
 
 ### Response Format
 
