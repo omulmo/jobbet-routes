@@ -3,16 +3,23 @@
     "description": "Jobbet project agent with whitelisted shell commands",
     "resources": ["file://.kiro/agents/development-workflow.md"],
     "allowedTools": [
+        "dummy_tool",
         "fs_read",
         "fs_write",
-        "grep",
-        "code",
         "use_aws",
         "glob",
         "web_search",
         "web_fetch"
     ],
     "toolsSettings": {
+        "fs_read": {
+            "command": "*",
+            "path": "file://./**"
+        },
+        "fs_write": {
+            "command": "*",
+            "path": "file://./**"
+        },
         "execute_bash": {
             "allowedCommands": [
                 "\\Agit\\b.*\\z",

@@ -21,6 +21,9 @@
 - Iterate on Lambda handler logic and frontend UI
 - Test real-time route data from SL Journey Planner v2 API
 
+## Workflow Reminders
+- On commit: ALWAYS read `.kiro/agents/development-workflow.md` first and follow all steps (reflect → update memory bank → commit)
+
 ## Active Decisions
 - Using `deploy.sh` for fast code iteration (bypasses CloudFormation)
 - Using `setup-infrastructure.sh` for full CDK deploys
