@@ -68,7 +68,7 @@ class TestProcessRoute:
 
         assert result is None
 
-    def test_filters_walking_legs(self):
+    def test_includes_walking_legs_as_emoji(self):
         route = {"name": "Test", "walk_minutes": 2, "origin_id": "123"}
         api_resp = {
             "journeys": [{
@@ -83,7 +83,7 @@ class TestProcessRoute:
                     {
                         "origin": {"departureTimePlanned": "2026-03-21T08:35:00+01:00"},
                         "destination": {"arrivalTimePlanned": "2026-03-21T08:40:00+01:00"},
-                        "transportation": {"product": {"name": "Gång"}},
+                        "transportation": {"product": {"name": "footpath"}},
                     },
                     {
                         "origin": {"departureTimePlanned": "2026-03-21T08:40:00+01:00"},
@@ -96,7 +96,7 @@ class TestProcessRoute:
         with patch.object(h, "fetch_trip", return_value=api_resp), _fixed_now("08:20"):
             result = h.process_route(route)
 
-        assert result["legs"] == ["816", "17"]
+        assert result["legs"] == ["816", "🚶‍♂️‍➡️", "17"]
 
 
 class TestHandler:

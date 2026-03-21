@@ -55,11 +55,15 @@ def process_route(route):
         if leave_by < now:
             return None
 
-        transit_legs = [
-            leg["transportation"].get("disassembledName") or leg["transportation"].get("name", "?")
-            for leg in legs
-            if leg["transportation"].get("product", {}).get("name") != "Gång"
-        ]
+        transit_legs = []
+        for leg in legs:
+            if leg["transportation"].get("product", {}).get("name") in ("Gång", "footpath"):
+                transit_legs.append("🚶‍♂️‍➡️")
+            else:
+                transit_legs.append(
+                    leg["transportation"].get("disassembledName")
+                    or leg["transportation"].get("name", "?")
+                )
 
         return {
             "name": route["name"],
