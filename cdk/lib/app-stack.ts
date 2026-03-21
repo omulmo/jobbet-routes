@@ -58,6 +58,13 @@ export class AppStack extends cdk.Stack {
       certificate: props.certificate,
     });
 
+    // CloudFront needs both permissions for Lambda function URLs (since Oct 2025)
+    fn.addPermission('CloudFrontInvokeFunction', {
+      principal: new cdk.aws_iam.ServicePrincipal('cloudfront.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: `arn:aws:cloudfront::${this.account}:distribution/${distribution.distributionId}`,
+    });
+
     // Route 53 alias
     const hostedZone = route53.HostedZone.fromLookup(this, 'Zone', {
       domainName: props.hostedZoneDomain,
