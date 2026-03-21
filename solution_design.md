@@ -37,6 +37,8 @@ The CertificateStack exports the ACM certificate ARN. The AppStack imports it us
 
 ## External API: SL Journey Planner v2
 
+See [sl-api.md](sl-api.md) for full API documentation, including endpoint details, response structure, and known quirks.
+
 ### Overview
 
 - Provider: Trafiklab / SL
