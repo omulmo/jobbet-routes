@@ -22,3 +22,5 @@ const appStack = new AppStack(app, 'JobbetAppStack', {
 });
 
 appStack.addDependency(certStack);
+
+cdk.Tags.of(app).add('Project', 'JobbetApp');

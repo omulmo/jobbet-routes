@@ -50,6 +50,9 @@ The application shall run on AWS serverless infrastructure to minimize cost. The
 ### NFR-5: No Caching
 The initial implementation does not cache API responses. Every request to the backend triggers a fresh call to the Trafiklab API. Caching may be added later as an optimization.
 
+### NFR-6: Resource Tagging
+All AWS resources in this project shall be tagged with `Project: JobbetApp` so that relevant resources can be easily identified and tracked across the AWS account.
+
 ---
 
 ## Technical Requirements
