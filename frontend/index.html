@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jobbet</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>🚉 Jobbet</h1>
+  <div id="status">Laddar...</div>
+  <div id="routes"></div>
+  <button onclick="location.reload()">Uppdatera</button>
+  <script>
+    fetch('/api/routes')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('status').textContent = '';
+        const container = document.getElementById('routes');
+        if (!data.routes.length) {
+          container.innerHTML = '<p class="error">Inga avgångar hittades.</p>';
+          return;
+        }
+        container.innerHTML = data.routes.map(r => `
+          <div class="card${r.fastest ? ' fastest' : ''}">
+            <div class="name">${r.name}${r.fastest ? ' ⭐' : ''}</div>
+            <div class="time-row">
+              <span>Gå hemifrån <strong>${r.leave_home_by}</strong></span>
+              <span>Framme <strong>${r.arrival}</strong></span>
+            </div>
+            <div class="legs">${r.legs.join(' → ')}</div>
+            <div class="meta">Avgång ${r.departure} · ${r.transfers} byten · ${r.walk_minutes} min promenad</div>
+          </div>
+        `).join('');
+      })
+      .catch(() => {
+        document.getElementById('status').textContent = '';
+        document.getElementById('routes').innerHTML = '<p class="error">Kunde inte hämta data.</p>';
+      });
+  </script>
+</body>
+</html>

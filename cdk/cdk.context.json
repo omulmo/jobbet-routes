@@ -1,0 +1,10 @@
+{
+  "hosted-zone:account=362136510829:domainName=mulmo.name:region=us-east-1": {
+    "Id": "/hostedzone/Z25WPVEDBA545",
+    "Name": "mulmo.name."
+  },
+  "hosted-zone:account=362136510829:domainName=mulmo.name:region=eu-north-1": {
+    "Id": "/hostedzone/Z25WPVEDBA545",
+    "Name": "mulmo.name."
+  }
+}
