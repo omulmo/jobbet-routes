@@ -1,2 +1,2 @@
 #!/bin/bash
-exec kiro-cli chat --agent jobbet "$@"
+exec kiro-cli --agent jobbet "$@"

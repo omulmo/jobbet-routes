@@ -16,3 +16,5 @@
 
 ## Known Issues
 - `npx cdk` swallows stdout — must use `./node_modules/.bin/cdk` directly
+- Lambda `process_route` had bare `except Exception` swallowing all errors — now logged
+- Zero routes often caused by all departures being in the past (leave_by < now), not API failures

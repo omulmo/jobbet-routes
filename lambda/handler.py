@@ -1,6 +1,10 @@
 import json
+import logging
 import urllib.request
 from datetime import datetime, timedelta, timezone
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 DESTINATION_ID = "9091001001009509"  # Solna station
 
@@ -53,6 +57,7 @@ def process_route(route):
 
         now = datetime.now(TZ)
         if leave_by < now:
+            logger.info("Route '%s' skipped: leave_by %s is in the past (now=%s)", route["name"], fmt_time(leave_by), fmt_time(now))
             return None
 
         transit_legs = []
@@ -77,6 +82,7 @@ def process_route(route):
             "_arrival_dt": arrival,
         }
     except Exception:
+        logger.exception("Route '%s' failed (origin_id=%s)", route["name"], route["origin_id"])
         return None
 
 
@@ -96,7 +102,9 @@ def handler(event, context):
     }
     if not results:
         body["error"] = "Could not fetch trip data"
+        logger.warning("Zero routes returned")
 
+    logger.info("Returning %d route(s)", len(results))
     return {
         "statusCode": 200,
         "headers": {"Content-Type": "application/json"},

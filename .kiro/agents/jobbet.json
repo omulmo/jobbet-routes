@@ -1,32 +1,41 @@
 {
-  "name": "jobbet",
-  "description": "Jobbet project agent with whitelisted shell commands",
-  "allowedTools": ["fs_read", "fs_write", "grep", "code", "use_aws", "glob", "web_search", "web_fetch"],
-  "toolsSettings": {
-    "execute_bash": {
-      "allowedCommands": [
-        "\\Agit\\b.*\\z",
-        "\\Anpx\\b.*\\z",
-        "\\Anpm\\b.*\\z",
-        "\\Aecho\\b.*\\z",
-        "\\Als\\b.*\\z",
-        "\\Aless\\b.*\\z",
-        "\\Atail\\b.*\\z",
-        "\\Agrep\\b.*\\z",
-        "\\Acurl\\b.*\\z",
-        "\\Ajq\\b.*\\z",
-        "\\Aaws\\b.*\\z",
-        "\\Achmod\\b.*\\z",
-        "\\Acat\\b.*\\z",
-        "\\Ahead\\b.*\\z",
-        "\\Apwd\\z",
-        "\\Amkdir\\b.*\\z",
-        "\\Apython3\\b.*\\z",
-        "\\Apip3\\b.*\\z",
-        "\\A\\./deploy\\.sh\\b.*\\z",
-        "\\A\\./setup-infrastructure\\.sh\\b.*\\z",
-        "\\A\\./kiro\\.sh\\b.*\\z"
-      ]
+    "name": "jobbet",
+    "description": "Jobbet project agent with whitelisted shell commands",
+    "resources": ["file://.kiro/agents/development-workflow.md"],
+    "allowedTools": [
+        "fs_read",
+        "fs_write",
+        "grep",
+        "code",
+        "use_aws",
+        "glob",
+        "web_search",
+        "web_fetch"
+    ],
+    "toolsSettings": {
+        "execute_bash": {
+            "allowedCommands": [
+                "\\Agit\\b.*\\z",
+                "\\Anpx\\b.*\\z",
+                "\\Anpm\\b.*\\z",
+                "\\Aecho\\b.*\\z",
+                "\\Als\\b.*\\z",
+                "\\Aless\\b.*\\z",
+                "\\Atail\\b.*\\z",
+                "\\Agrep\\b.*\\z",
+                "\\Acurl\\b.*\\z",
+                "\\Ajq\\b.*\\z",
+                "\\Aaws\\b.*\\z",
+                "\\Achmod\\b.*\\z",
+                "\\Acat\\b.*\\z",
+                "\\Ahead\\b.*\\z",
+                "\\Apwd\\z",
+                "\\Amkdir\\b.*\\z",
+                "\\Apython3\\b.*\\z",
+                "\\Apip3\\b.*\\z",
+                "\\A\\./deploy\\.sh\\b.*\\z",
+                "\\A\\./setup-infrastructure\\.sh\\b.*\\z"
+            ]
+        }
     }
-  }
 }
