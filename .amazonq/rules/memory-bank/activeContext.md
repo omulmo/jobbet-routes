@@ -5,6 +5,7 @@
 - Iterating on Lambda handler and frontend
 
 ## Recent Changes
+- Added `kiro.sh` launcher and `.kiro/agents/jobbet.json` agent config with whitelisted tools and shell commands
 - Added `Project: JobbetApp` tag to all AWS resources (NFR-6) via `cdk.Tags.of(app).add()` in `cdk/bin/app.ts`
 - Deployed full infrastructure via CDK (two stacks across us-east-1 and eu-north-1)
 - Fixed CloudFront → Lambda 403 by adding OAC (`FunctionUrlOrigin.withOriginAccessControl`)
