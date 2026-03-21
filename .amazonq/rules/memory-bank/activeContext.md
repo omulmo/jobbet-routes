@@ -5,6 +5,8 @@
 - Iterating on Lambda handler and frontend
 
 ## Recent Changes
+- Added commit workflow to development-workflow.md: reflect → update memory bank → commit
+- Updated dev_server.py mock with real SL API data and fixed emoji encoding (ZWJ characters)
 - Added `kiro.sh` launcher and `.kiro/agents/jobbet.json` agent config with whitelisted tools and shell commands
 - Added `Project: JobbetApp` tag to all AWS resources (NFR-6) via `cdk.Tags.of(app).add()` in `cdk/bin/app.ts`
 - Deployed full infrastructure via CDK (two stacks across us-east-1 and eu-north-1)

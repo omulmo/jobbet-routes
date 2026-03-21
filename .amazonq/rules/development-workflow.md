@@ -10,3 +10,11 @@ When implementing changes to the application, follow this checklist in order:
 6. **Integration Test** — Verify the live endpoint at `https://jobbet.mulmo.name/api/routes` returns expected data, and check the frontend at `https://jobbet.mulmo.name`.
 
 Do not skip steps. Every change should flow through the full cycle.
+
+## Commit Workflow
+
+When asked to commit, always do the following before running `git commit`:
+
+1. **Reflect** — Review what was learned or changed during this work session.
+2. **Update Memory Bank** — Update relevant `.amazonq/rules/memory-bank/` files (activeContext.md, systemPatterns.md, techContext.md, progress.md) with any new knowledge, decisions, patterns, or gotchas discovered.
+3. **Stage & Commit** — Stage all changes (including memory bank updates) and commit with a descriptive message.
