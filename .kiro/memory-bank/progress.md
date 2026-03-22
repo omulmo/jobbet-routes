@@ -18,6 +18,9 @@
 - Consider edge cases for two-route selection (e.g. when both picks are the same route)
 - End-to-end testing during weekday morning commute hours
 
+## Recently Fixed
+- Timezone: replaced hardcoded UTC+1 with `ZoneInfo("Europe/Stockholm")` — now handles CET↔CEST automatically
+
 ## Known Issues
 - `npx cdk` swallows stdout — must use `./node_modules/.bin/cdk` directly
 - SL API `calc_number_of_trips` max is 3 (4+ returns HTTP 400)

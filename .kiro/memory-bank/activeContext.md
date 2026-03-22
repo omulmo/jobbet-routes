@@ -2,15 +2,10 @@
 
 ## Current Focus
 - Application is deployed and live at https://jobbet.mulmo.name
-- Transfer station display and transport mode icons implemented and deployed
+- Fixed timezone handling: uses `ZoneInfo("Europe/Stockholm")` for automatic CET↔CEST
 
 ## Recent Changes
-- FR-9: Transfer station display — shows "Byte vid X, Y" for each route
-- FR-10: Deduplicated transfer stations — collapses same/near-duplicate names (e.g. "Odenplan" + "Stockholm Odenplan" → "Odenplan")
-- FR-11: Transport mode icons — emoji icons (🚇🚌🚆🚊) prepended to line numbers in legs
-- All emoji in handler.py replaced with named `\uXXXX` constants (ICON_WALK, ICON_METRO, etc.)
-- Removed ⭐ from fastest route card (green highlight is sufficient)
-- Updated requirements.md, solution_design.md, and tests for all changes
+- Replaced hardcoded `timezone(timedelta(hours=1))` with `ZoneInfo("Europe/Stockholm")` to survive DST switch on March 29
 
 ## Active Decisions
 - Using `deploy.sh` for fast code iteration (bypasses CloudFormation)

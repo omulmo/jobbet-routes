@@ -2,7 +2,7 @@
 
 ## Technologies
 - Frontend: HTML + CSS + vanilla JS (no framework, no build step)
-- Backend: Python 3.12 Lambda function
+- Backend: Python 3.12 Lambda function (uses `zoneinfo.ZoneInfo("Europe/Stockholm")` for timezone)
 - Infrastructure: AWS CDK (TypeScript) with aws-cdk-lib 2.244.0
 - External API: SL Journey Planner v2 (no API key required)
 

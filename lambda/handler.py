@@ -2,6 +2,7 @@ import json
 import logging
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -24,7 +25,7 @@ ICON_TRAM = "\U0001f68a"    # 🚊
 MODE_ICONS = {"Tunnelbana": ICON_METRO, "Buss": ICON_BUS, "Tåg": ICON_TRAIN, "Spårvagn": ICON_TRAM}
 
 API_BASE = "https://journeyplanner.integration.sl.se/v2/trips"
-TZ = timezone(timedelta(hours=1))
+TZ = ZoneInfo("Europe/Stockholm")
 
 
 def fetch_trip(origin_id):
