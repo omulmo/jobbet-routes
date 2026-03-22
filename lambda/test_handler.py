@@ -49,7 +49,8 @@ class TestProcessRoute:
         assert result["leave_home_by"] == "08:25"
         assert result["departure"] == "08:30"
         assert result["arrival"] == "09:00"
-        assert result["legs"] == ["41"]
+        assert result["legs"] == ["🚆 41"]
+        assert result["transfer_stations"] == []
 
     def test_returns_none_when_leave_by_in_past(self):
         route = {"name": "Test", "walk_minutes": 5, "origin_id": "123"}
@@ -76,17 +77,17 @@ class TestProcessRoute:
                 "interchanges": 1,
                 "legs": [
                     {
-                        "origin": {"departureTimePlanned": "2026-03-21T08:30:00+01:00"},
+                        "origin": {"parent": {"disassembledName": "Skarpnäcks koloniområde"}, "departureTimePlanned": "2026-03-21T08:30:00+01:00"},
                         "destination": {"arrivalTimePlanned": "2026-03-21T08:35:00+01:00"},
                         "transportation": {"disassembledName": "816", "product": {"name": "Buss"}},
                     },
                     {
-                        "origin": {"departureTimePlanned": "2026-03-21T08:35:00+01:00"},
+                        "origin": {"parent": {"disassembledName": "Skarpnäck"}, "departureTimePlanned": "2026-03-21T08:35:00+01:00"},
                         "destination": {"arrivalTimePlanned": "2026-03-21T08:40:00+01:00"},
                         "transportation": {"product": {"name": "footpath"}},
                     },
                     {
-                        "origin": {"departureTimePlanned": "2026-03-21T08:40:00+01:00"},
+                        "origin": {"parent": {"disassembledName": "Skarpnäck"}, "departureTimePlanned": "2026-03-21T08:40:00+01:00"},
                         "destination": {"arrivalTimePlanned": "2026-03-21T09:00:00+01:00"},
                         "transportation": {"disassembledName": "17", "product": {"name": "Tunnelbana"}},
                     },
@@ -96,8 +97,8 @@ class TestProcessRoute:
         with patch.object(h, "fetch_trip", return_value=api_resp), _fixed_now("08:20"):
             result = h.process_route(route)
 
-        assert result["legs"] == ["816", "🚶‍♂️‍➡️", "17"]
-
+        assert result["legs"] == ["🚌 816", "🚶‍♂️‍➡️", "🚇 17"]
+        assert result["transfer_stations"] == ["Skarpnäck"]
 
 class TestHandler:
     def test_marks_fastest_route(self):

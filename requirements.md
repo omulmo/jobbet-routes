@@ -35,6 +35,15 @@ The app is designed for a single user. There is no authentication, user accounts
 ### FR-8: Trafiklab API Integration
 The app shall retrieve real-time public transit data from Trafiklab APIs (SL Reseplanerare / Trip Planner and/or SL Realtidsinformation). The API key is stored in AWS Secrets Manager and retrieved by the backend at runtime.
 
+### FR-9: Transfer Station Display
+For each route option, the app shall display the names of the stations where the user transfers between transport modes (e.g. bus to metro, metro to commuter train). This helps the user understand the journey at a glance.
+
+### FR-10: Deduplicated Transfer Stations
+Transfer station names shall be deduplicated so that consecutive transfers at the same station (e.g. walking between platforms) appear only once. Near-duplicate names where one contains the other (e.g. "Odenplan" and "Stockholm Odenplan") shall be collapsed to the shorter name.
+
+### FR-11: Transport Mode Icons
+Each transit leg shall display a small icon indicating the mode of transportation (e.g. metro, bus, train) alongside the line number.
+
 ---
 
 ## Non-Functional Requirements

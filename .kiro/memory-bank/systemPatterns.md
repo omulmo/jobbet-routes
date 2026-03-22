@@ -43,3 +43,5 @@ kiro-dev-workshop/
 - Use `./node_modules/.bin/cdk` instead of `npx cdk` (stdout issue)
 - `CDK_DEFAULT_ACCOUNT` derived from `aws sts get-caller-identity`, never hardcoded
 - Every change follows the development workflow checklist
+- Emoji in Python code: use named `\uXXXX` constants (e.g. `ICON_METRO`, `ICON_BUS`) — never inline emoji literals
+- SL API station names: use `leg.origin.parent.disassembledName` for human-readable names at transfer points

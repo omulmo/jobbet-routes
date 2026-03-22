@@ -14,6 +14,15 @@ ROUTES = [
     {"name": "T-bana från Skogskyrkogården", "walk_minutes": 15, "origin_id": "9091001000009185"},
 ]
 
+# Transport mode icons (emoji as unicode escapes)
+ICON_WALK = "\U0001f6b6\u200d\u2642\ufe0f\u200d\u27a1\ufe0f"  # 🚶‍♂️‍➡️
+ICON_METRO = "\U0001f687"   # 🚇
+ICON_BUS = "\U0001f68c"     # 🚌
+ICON_TRAIN = "\U0001f686"   # 🚆
+ICON_TRAM = "\U0001f68a"    # 🚊
+
+MODE_ICONS = {"Tunnelbana": ICON_METRO, "Buss": ICON_BUS, "Tåg": ICON_TRAIN, "Spårvagn": ICON_TRAM}
+
 API_BASE = "https://journeyplanner.integration.sl.se/v2/trips"
 TZ = timezone(timedelta(hours=1))
 
@@ -60,14 +69,21 @@ def process_route(route):
                 continue
 
             transit_legs = []
-            for leg in legs:
+            transfers = []
+            for i, leg in enumerate(legs):
                 if leg["transportation"].get("product", {}).get("name") in ("Gång", "footpath"):
-                    transit_legs.append("\U0001f6b6\u200d\u2642\ufe0f\u200d\u27a1\ufe0f")
+                    transit_legs.append(ICON_WALK)
                 else:
-                    transit_legs.append(
+                    name = (
                         leg["transportation"].get("disassembledName")
                         or leg["transportation"].get("name", "?")
                     )
+                    icon = MODE_ICONS.get(leg["transportation"].get("product", {}).get("name", ""), "")
+                    transit_legs.append(f"{icon} {name}" if icon else name)
+                if i > 0:
+                    station = leg["origin"].get("parent", {}).get("disassembledName") or leg["origin"].get("name", "")
+                    if station and not any(station in t or t in station for t in transfers):
+                        transfers.append(station)
 
             return {
                 "name": route["name"],
@@ -77,6 +93,7 @@ def process_route(route):
                 "arrival": fmt_time(arrival),
                 "transfers": journey.get("interchanges", 0),
                 "legs": transit_legs,
+                "transfer_stations": transfers,
                 "fastest": False,
                 "_arrival_dt": arrival,
                 "_leave_by_dt": leave_by,

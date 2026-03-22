@@ -24,12 +24,13 @@
         }
         container.innerHTML = data.routes.map(r => `
           <div class="card${r.fastest ? ' fastest' : ''}">
-            <div class="name">${r.name}${r.fastest ? ' ⭐' : ''}</div>
+            <div class="name">${r.name}</div>
             <div class="time-row">
               <span>Gå hemifrån <strong>${r.leave_home_by}</strong></span>
               <span>Framme <strong>${r.arrival}</strong></span>
             </div>
             <div class="legs">${r.legs.join(' → ')}</div>
+            ${r.transfer_stations && r.transfer_stations.length ? `<div class="transfers">Byte vid ${r.transfer_stations.join(', ')}</div>` : ''}
             <div class="meta">Avgång ${r.departure} · ${r.transfers} byten · ${r.walk_minutes} min promenad</div>
           </div>
         `).join('');

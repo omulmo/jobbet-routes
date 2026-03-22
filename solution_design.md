@@ -233,6 +233,7 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
       "arrival": "08:37",
       "transfers": 2,
       "legs": ["Buss 816", "T17", "Pendeltåg 41"],
+      "transfer_stations": ["Skarpnäck", "T-Centralen"],
       "fastest": true
     },
     {
@@ -243,6 +244,7 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
       "arrival": "08:42",
       "transfers": 1,
       "legs": ["T17", "Pendeltåg 41"],
+      "transfer_stations": ["T-Centralen"],
       "fastest": false
     }
   ]
@@ -274,7 +276,8 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
    - "Leave home by" time
    - Departure time from stop
    - Arrival time at Solna
-   - Transit legs (e.g. "Buss 816 → T17 → Pendeltåg 41")
+   - Transit legs with transport mode icons (e.g. "🚌 816 → 🚇 17 → 🚆 41")
+   - Transfer stations (e.g. "Byte vid Skarpnäck, T-Centralen")
 5. Refresh button calls `location.reload()`
 6. Loading state while fetching
 7. Error state if fetch fails

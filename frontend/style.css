@@ -30,6 +30,7 @@ h1 { font-size: 1.4rem; margin-bottom: 1rem; }
 }
 
 .legs { color: #555; font-size: 0.9rem; margin-bottom: 0.3rem; }
+.transfers { color: #666; font-size: 0.8rem; margin-bottom: 0.3rem; font-style: italic; }
 .meta { color: #888; font-size: 0.8rem; }
 
 .error { color: #c62828; padding: 1rem 0; }
