@@ -11,6 +11,10 @@ When implementing changes to the application, follow this checklist in order:
 
 Do not skip steps. Every change should flow through the full cycle.
 
+## Coding Conventions
+
+- **Emoji in Python**: Never use inline emoji literals. Define named unicode escape constants (e.g. `ICON_METRO = "\U0001f687"`) and reference those.
+
 ## Commit Workflow
 
 When asked to commit, always do the following before running `git commit`:
