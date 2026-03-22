@@ -1,33 +1,33 @@
-# Requirements — Jobbet (jobbet.mulmo.name)
+# Requirements — Trips (trips.mulmo.name)
 
 ## Overview
-A simple web app that helps a commuter in Stockholm decide when to leave home to get to work as fast as possible. The app compares multiple public transit route options using real-time data from Trafiklab APIs and recommends the fastest one.
+A simple web app that helps a commuter in Stockholm decide when to leave for a destination as fast as possible. The app compares multiple public transit route options using real-time data from Trafiklab APIs and recommends the fastest one. The user manages their own locations, stops, and trips through the UI.
 
 ---
 
 ## Functional Requirements
 
 ### FR-1: Real-Time Route Comparison
-The app shall compare multiple pre-configured route options between two locations. The user can check routes from home to work, or from work to home. Each route option represents a different way to commute, such as taking a bus from the nearest stop or walking to a metro station further away.
+The app shall compare multiple route options between two locations based on the active trip. Each route option represents a different way to commute, such as taking a bus from the nearest stop or walking to a metro station further away.
 
 ### FR-2: Estimated Arrival Time
-For each route option, the app shall display the estimated arrival time at the destination if the user leaves home right now. This gives the user a clear picture of which option gets them to work the soonest.
+For each route option, the app shall display the estimated arrival time at the final destination (including walking time from the arrival stop) if the user leaves right now.
 
 ### FR-3: Walking Time to Stop
-Each route option shall include the estimated walking time from home to the departure stop. This ensures the user knows exactly when to walk out the door to catch the next departure.
+Each route option shall include the estimated walking time from the origin location to the departure stop, so the user knows when to walk out the door.
 
 ### FR-4: Route Recommendation
 The app shall return exactly two route options:
-1. The fastest route — the one with the earliest arrival time at work.
-2. The next departure — from the remaining routes, the one with the earliest "leave home by" time (regardless of arrival time).
+1. The fastest route — the one with the earliest arrival time at the destination.
+2. The next departure — from the remaining routes, the one with the earliest "leave by" time.
 
 If only one valid route exists, only one is returned. The fastest route is visually highlighted so the user can make a quick decision at a glance.
 
 ### FR-5: Pull-Based Usage
 The app is pull-based. The user opens the app in a browser to check departure suggestions. There are no push notifications or background alerts.
 
-### FR-6: Location-Based Route Configuration
-The app defines named locations (e.g. "home", "work"). Each location has a name, a geo-location (latitude/longitude), and one or more associated transit stops/stations. Each stop has a stop ID and a walking distance (in minutes) from the location. Routes are derived from the stops at the origin location to the stops at the destination location. All configuration is static — defined in code or configuration files with no user-facing UI for changes.
+### FR-6: Location Management (CRUD)
+The user can create, view, update, and delete locations through the UI. Each location has a display name, geo-coordinates (latitude/longitude), and zero or more associated transit stops. Deleting a location that is referenced by a trip automatically deletes that trip.
 
 ### FR-7: Single User
 The app is designed for a single user. There is no authentication, user accounts, or multi-tenancy.
@@ -45,7 +45,19 @@ Transfer station names shall be deduplicated so that consecutive transfers at th
 Each transit leg shall display a small icon indicating the mode of transportation (e.g. metro, bus, train) alongside the line number.
 
 ### FR-12: Direction Selection
-The user can select the commute direction: home→work or work→home. The app defaults to home→work. When the direction is reversed, the origin and destination locations are swapped, and walking times are taken from the destination location's stops (since the user walks from the arrival stop to the final destination).
+The direction toggle is derived from the first trip in the user's ordered trip list. The toggle shows the first trip and its reverse (e.g. "→ Jobbet" / "→ Hemma"). When reversed, origin and destination are swapped and walking times are taken from the respective location's stops.
+
+### FR-13: Geo-Location Resolution
+When creating or editing a location, the user can use the browser's geolocation API to set coordinates automatically, or enter an address that the backend resolves to latitude/longitude.
+
+### FR-14: Stop Discovery
+When adding stops to a location, the backend provides a lookup of nearby transit stops based on the location's geo-coordinates. The user selects from discovered stops. Walking time (in minutes) is auto-calculated from the distance between the location and the stop, but the user can override it manually.
+
+### FR-15: Trip Configuration
+A trip is an ordered pair of locations (origin → destination). The user can create, reorder, and delete trips. The first trip in the ordered list determines the direction toggle on the main view. Trips reference locations by identity.
+
+### FR-16: Persistence
+Locations, stops, and trips are persisted so that configuration survives across sessions and deployments. The persistence mechanism is a solution design concern.
 
 ---
 
@@ -67,7 +79,7 @@ The application shall run on AWS serverless infrastructure to minimize cost. The
 The initial implementation does not cache API responses. Every request to the backend triggers a fresh call to the Trafiklab API. Caching may be added later as an optimization.
 
 ### NFR-6: Resource Tagging
-All AWS resources in this project shall be tagged with `Project: JobbetApp` so that relevant resources can be easily identified and tracked across the AWS account.
+All AWS resources in this project shall be tagged with `Project: TripsApp` so that relevant resources can be easily identified and tracked across the AWS account.
 
 ---
 
@@ -90,10 +102,13 @@ There is no API Gateway — CloudFront connects directly to the Lambda function 
 All infrastructure is defined using AWS CDK in TypeScript. The CDK stack provisions the S3 bucket, Lambda function, CloudFront distribution, ACM certificate, Route 53 record, and Secrets Manager access. The primary deployment region is `eu-north-1` (Stockholm), with the exception of the ACM certificate which must be in `us-east-1` for CloudFront.
 
 ### TR-5: SSL Certificate
-The CDK stack creates an ACM certificate for `jobbet.mulmo.name` in the `us-east-1` region (required by CloudFront). DNS validation is performed against the existing Route 53 hosted zone for `mulmo.name`.
+The CDK stack creates an ACM certificate for `trips.mulmo.name` in the `us-east-1` region (required by CloudFront). DNS validation is performed against the existing Route 53 hosted zone for `mulmo.name`.
 
 ### TR-6: Domain and DNS
-The domain `jobbet.mulmo.name` is used to access the app. The CDK stack creates an alias record in the existing Route 53 hosted zone for `mulmo.name`, pointing to the CloudFront distribution.
+The domain `trips.mulmo.name` is used to access the app. The CDK stack creates an alias record in the existing Route 53 hosted zone for `mulmo.name`, pointing to the CloudFront distribution.
 
 ### TR-7: Secrets Management
 The Trafiklab API key is stored in AWS Secrets Manager. The Lambda function has IAM permissions to read the secret at runtime. The API key is never hardcoded in source code or environment variables.
+
+### TR-8: Layered Architecture
+The solution shall separate presentation logic (frontend) from data-oriented APIs that use domain primitives (locations, stops, trips). The API and business logic layer shall be reusable by other clients, such as alternative UIs or an MCP agent.

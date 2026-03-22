@@ -1,20 +1,23 @@
 # Project Brief
 
 ## Project Name
-Kiro Dev Workshop
+Trips — trips.mulmo.name (formerly Jobbet / jobbet.mulmo.name)
 
 ## Overview
-A workshop project for learning and exploring Kiro Dev capabilities.
+A personal commuter app for Stockholm. Compares real-time public transit routes between user-defined locations in both directions, and recommends the fastest option. The user manages locations, stops, and trips through the UI.
 
 ## Goals
-- Explore Kiro Dev features and workflows
-- Learn how to use Kiro effectively in an IDE environment
-- Demonstrate best practices for AI-assisted development
+- Show the fastest way to get between two locations using Stockholm public transit
+- Let the user configure their own locations with nearby transit stops
+- Support bidirectional trips (e.g. home→work and work→home)
+- Keep it simple: single user, no auth, serverless, minimal cost
 
 ## Scope
-- Workshop exercises and examples
-- Kiro configuration and rules setup
-- Memory Bank for persistent project context
+- Frontend: mobile-first static HTML/CSS/JS (no framework)
+- Backend: Python Lambda behind CloudFront
+- Infrastructure: AWS CDK (TypeScript)
+- External API: SL Journey Planner v2 + stop lookup APIs
+- Persistence for locations, stops, and trips (mechanism TBD in solution design)
 
 ## Status
-Project is in initial setup phase. No application code has been written yet.
+Bidirectional routing (home↔work) is implemented and deployed. Requirements updated for location CRUD, stop discovery, geo-location, trip management, and persistence. Solution design update pending.

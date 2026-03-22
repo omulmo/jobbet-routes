@@ -12,12 +12,14 @@
 - CloudFront OAC for both S3 and Lambda origins
 - Hostname configurable via CDK context (`-c hostname=...`), defaults to `jobbet.mulmo.name`
 - Hosted zone (`mulmo.name`) derived by stripping first subdomain label from hostname
+- Note: domain will change to `trips.mulmo.name` — CDK/infra updates pending solution design
 
 ## Key Learnings
 - `FunctionUrlOrigin.withOriginAccessControl(fnUrl)` is required for CloudFront → Lambda function URL with IAM auth (plain `new FunctionUrlOrigin()` causes 403)
 - Since October 2025, Lambda function URLs need both `lambda:InvokeFunctionUrl` AND `lambda:InvokeFunction` permissions — CDK's OAC only adds the former, so `lambda:InvokeFunction` must be added manually via `fn.addPermission()`
 - `npx cdk` in this project swallows stdout; use `./node_modules/.bin/cdk` directly
 - CDK requires `CDK_DEFAULT_ACCOUNT` env var since stacks use explicit account/region
+- CloudFront `/api/*` behavior already forwards query strings to Lambda via `ALL_VIEWER_EXCEPT_HOST_HEADER` origin request policy — no CDK changes needed for query param support
 
 ## Deployment
 - `./setup-infrastructure.sh [hostname]` — CDK bootstrap + deploy, saves resource names to `deploy.env`
