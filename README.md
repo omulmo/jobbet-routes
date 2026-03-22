@@ -1,6 +1,6 @@
 # Jobbet — jobbet.mulmo.name
 
-A personal commuter app for Stockholm. Compares real-time public transit routes from home (Skarpnäck) to work (Solna station) and recommends the fastest option.
+A personal commuter app for Stockholm. Compares real-time public transit routes between home (Skarpnäck) and work (Solna station) in both directions, and recommends the fastest option.
 
 ## Architecture
 
@@ -29,6 +29,11 @@ Browser → jobbet.mulmo.name (Route 53)
 - AWS CLI configured with credentials
 - Node.js (for CDK)
 - Python 3.12+ (for Lambda development/testing)
+
+## Development Conventions
+
+- Always use `python3` (never `python`) when executing Python commands
+- Always use a virtual environment (`venv`) for Python work
 
 ## Initial Setup
 

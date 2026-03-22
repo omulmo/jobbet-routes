@@ -9,36 +9,63 @@
 </head>
 <body>
   <h1>🚉 Jobbet</h1>
+  <div id="toggle">
+    <button class="active" data-from="home" data-to="work">→ Jobbet</button>
+    <button data-from="work" data-to="home">→ Hemma</button>
+  </div>
   <div id="status">Laddar...</div>
   <div id="routes"></div>
-  <button onclick="location.reload()">Uppdatera</button>
+  <button id="refresh">Uppdatera</button>
   <script>
-    fetch('/api/routes')
-      .then(r => r.json())
-      .then(data => {
-        document.getElementById('status').textContent = '';
-        const container = document.getElementById('routes');
-        if (!data.routes.length) {
-          container.innerHTML = '<p class="error">Inga avgångar hittades.</p>';
-          return;
-        }
-        container.innerHTML = data.routes.map(r => `
-          <div class="card${r.fastest ? ' fastest' : ''}">
-            <div class="name">${r.name}</div>
-            <div class="time-row">
-              <span>Gå hemifrån <strong>${r.leave_home_by}</strong></span>
-              <span>Framme <strong>${r.arrival}</strong></span>
+    let currentFrom = 'home', currentTo = 'work';
+
+    function load() {
+      const status = document.getElementById('status');
+      const container = document.getElementById('routes');
+      status.textContent = 'Laddar...';
+      container.innerHTML = '';
+
+      fetch(`/api/routes?from=${currentFrom}&to=${currentTo}`)
+        .then(r => r.json())
+        .then(data => {
+          status.textContent = '';
+          if (!data.routes || !data.routes.length) {
+            container.innerHTML = '<p class="error">Inga avgångar hittades.</p>';
+            return;
+          }
+          const leaveLabel = data.origin === 'Hemma' ? 'Gå hemifrån' : 'Gå från jobbet';
+          const arriveLabel = data.destination === 'Hemma' ? 'Framme hemma' : 'Framme vid ' + data.destination;
+          container.innerHTML = data.routes.map(r => `
+            <div class="card${r.fastest ? ' fastest' : ''}">
+              <div class="name">${r.name}</div>
+              <div class="time-row">
+                <span>${leaveLabel} <strong>${r.leave_by}</strong></span>
+                <span>${arriveLabel} <strong>${r.arrive_by}</strong></span>
+              </div>
+              <div class="legs">${r.legs.join(' → ')}</div>
+              ${r.transfer_stations && r.transfer_stations.length ? `<div class="transfers">Byte vid ${r.transfer_stations.join(', ')}</div>` : ''}
+              <div class="meta">Avgång ${r.departure} · ${r.transfers} byten</div>
             </div>
-            <div class="legs">${r.legs.join(' → ')}</div>
-            ${r.transfer_stations && r.transfer_stations.length ? `<div class="transfers">Byte vid ${r.transfer_stations.join(', ')}</div>` : ''}
-            <div class="meta">Avgång ${r.departure} · ${r.transfers} byten · ${r.walk_minutes} min promenad</div>
-          </div>
-        `).join('');
-      })
-      .catch(() => {
-        document.getElementById('status').textContent = '';
-        document.getElementById('routes').innerHTML = '<p class="error">Kunde inte hämta data.</p>';
-      });
+          `).join('');
+        })
+        .catch(() => {
+          status.textContent = '';
+          container.innerHTML = '<p class="error">Kunde inte hämta data.</p>';
+        });
+    }
+
+    document.getElementById('toggle').addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn || btn.classList.contains('active')) return;
+      document.querySelectorAll('#toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFrom = btn.dataset.from;
+      currentTo = btn.dataset.to;
+      load();
+    });
+
+    document.getElementById('refresh').addEventListener('click', load);
+    load();
   </script>
 </body>
 </html>

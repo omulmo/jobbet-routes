@@ -8,7 +8,7 @@ A simple web app that helps a commuter in Stockholm decide when to leave home to
 ## Functional Requirements
 
 ### FR-1: Real-Time Route Comparison
-The app shall compare multiple pre-configured route options from home to work. Each route option represents a different way to commute, such as taking a bus from the nearest stop or walking to a metro station further away.
+The app shall compare multiple pre-configured route options between two locations. The user can check routes from home to work, or from work to home. Each route option represents a different way to commute, such as taking a bus from the nearest stop or walking to a metro station further away.
 
 ### FR-2: Estimated Arrival Time
 For each route option, the app shall display the estimated arrival time at the destination if the user leaves home right now. This gives the user a clear picture of which option gets them to work the soonest.
@@ -26,8 +26,8 @@ If only one valid route exists, only one is returned. The fastest route is visua
 ### FR-5: Pull-Based Usage
 The app is pull-based. The user opens the app in a browser to check departure suggestions. There are no push notifications or background alerts.
 
-### FR-6: Static Route Configuration
-Routes, stops, and destinations are statically configured in the application code or configuration files. There is no user-facing UI for changing routes or settings.
+### FR-6: Location-Based Route Configuration
+The app defines named locations (e.g. "home", "work"). Each location has a name, a geo-location (latitude/longitude), and one or more associated transit stops/stations. Each stop has a stop ID and a walking distance (in minutes) from the location. Routes are derived from the stops at the origin location to the stops at the destination location. All configuration is static — defined in code or configuration files with no user-facing UI for changes.
 
 ### FR-7: Single User
 The app is designed for a single user. There is no authentication, user accounts, or multi-tenancy.
@@ -43,6 +43,9 @@ Transfer station names shall be deduplicated so that consecutive transfers at th
 
 ### FR-11: Transport Mode Icons
 Each transit leg shall display a small icon indicating the mode of transportation (e.g. metro, bus, train) alongside the line number.
+
+### FR-12: Direction Selection
+The user can select the commute direction: home→work or work→home. The app defaults to home→work. When the direction is reversed, the origin and destination locations are swapped, and walking times are taken from the destination location's stops (since the user walks from the arrival stop to the final destination).
 
 ---
 

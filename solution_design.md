@@ -169,28 +169,62 @@ The response contains a `journeys` array. Each journey has `legs` (segments of t
 
 ---
 
-## Route Configuration
+## Location Configuration
 
-Defined as a static Python dict in the Lambda handler:
+Defined as a static Python dict in the Lambda handler. Each location has a display name, geo-coordinates, and one or more associated transit stops with walking distances:
 
 ```python
-DESTINATION_ID = "9091001001009509"  # Solna station
-
-ROUTES = [
-    {"name": "Buss från Koloniområdet",      "walk_minutes": 3,  "origin_id": "9091001000001835"},
-    {"name": "T-bana från Skarpnäck",        "walk_minutes": 12, "origin_id": "9091001000009140"},
-    {"name": "T-bana från Skogskyrkogården", "walk_minutes": 15, "origin_id": "9091001000009185"},
-]
+LOCATIONS = {
+    "home": {
+        "name": "Hemma",
+        "lat": 59.270755,
+        "lon": 18.114195,
+        "stops": [
+            {"name": "Koloniområdet",    "id": "9091001000001835", "walk_minutes": 3},
+            {"name": "Skarpnäck",        "id": "9091001000009140", "walk_minutes": 12},
+            {"name": "Skogskyrkogården", "id": "9091001000009185", "walk_minutes": 15},
+        ],
+    },
+    "work": {
+        "name": "Jobbet",
+        "lat": 59.360031,
+        "lon": 18.000109,
+        "stops": [
+            {"name": "Solna station", "id": "9091001001009509", "walk_minutes": 2},
+        ],
+    },
+}
 ```
+
+Routes are derived at runtime by pairing each origin location stop with the destination location's stop(s). The `from` and `to` query parameters select which location is origin and which is destination.
+
+### Walk Minutes Logic
+
+Every stop has a `walk_minutes` value representing the walking time between that stop and its parent location. Both ends of a trip may involve walking, so both origin and destination walk times are always accounted for:
+
+- `leave_by` = first leg departure time − origin stop's `walk_minutes` (walk from starting point to departure stop)
+- `arrive_by` = last leg arrival time + destination stop's `walk_minutes` (walk from arrival stop to final destination)
+
+Example for `from=home&to=work`:
+- Origin stop: Skarpnäck (walk_minutes: 12) → leave home 12 min before departure
+- Destination stop: Solna station (walk_minutes: 2) → arrive at office 2 min after train arrives
+
+Example for `from=work&to=home`:
+- Origin stop: Solna station (walk_minutes: 2) → leave office 2 min before departure
+- Destination stop: Skarpnäck (walk_minutes: 12) → arrive home 12 min after metro arrives
+
+Since routes are derived by pairing origin stops with destination stops, and each location may have multiple stops, the walk times on both sides can vary per route combination.
+
+The route name is derived from the origin stop: e.g. "Från Koloniområdet" or "Från Solna station".
 
 ### Stop Reference
 
-| Stop | Global ID | Type |
-|------|-----------|------|
-| Skarpnäcks koloniområde | `9091001000001835` | Bus stop |
-| Skarpnäck (t-banan) | `9091001000009140` | Metro station |
-| Skogskyrkogården | `9091001000009185` | Metro station |
-| Solna station (destination) | `9091001001009509` | Commuter rail station |
+| Stop | Global ID | Type | Location |
+|------|-----------|------|----------|
+| Skarpnäcks koloniområde | `9091001000001835` | Bus stop | home |
+| Skarpnäck (t-banan) | `9091001000009140` | Metro station | home |
+| Skogskyrkogården | `9091001000009185` | Metro station | home |
+| Solna station | `9091001001009509` | Commuter rail station | work |
 
 Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
 
@@ -200,50 +234,69 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
 
 ### Endpoint
 
-`GET /api/routes`
+```
+GET /api/routes?from=home&to=work     (default)
+GET /api/routes?from=work&to=home
+```
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `from` | `home` | Origin location key (must exist in `LOCATIONS`) |
+| `to` | `work` | Destination location key (must exist in `LOCATIONS`) |
+
+Returns HTTP 400 if either key is not found in `LOCATIONS`.
 
 ### Flow
 
-1. For each route in `ROUTES`, call the SL Trip Planner API:
+1. Parse `from` and `to` from query string, defaulting to `home` and `work`
+2. Look up origin and destination in `LOCATIONS`
+3. For each stop in the origin location, call the SL Trip Planner API against the first stop of the destination location:
    ```
-   GET /v2/trips?type_origin=any&name_origin={origin_id}&type_destination=any&name_destination=9091001001009509&calc_number_of_trips=1&calc_one_direction=true
+   GET /v2/trips?type_origin=any&name_origin={origin_stop_id}&type_destination=any&name_destination={destination_stop_id}&calc_number_of_trips=3&calc_one_direction=true
    ```
-2. From the response, extract:
-   - First leg's departure time (when transit departs from the origin stop)
-   - Last leg's arrival time (when you arrive at Solna station)
+4. From the response, extract:
+   - First leg's departure time
+   - Last leg's arrival time
    - Transport summary (line names for each non-walking leg)
-3. Calculate "leave home by" = first leg departure time − walk_minutes
-4. Skip the route if "leave home by" is already in the past
-5. Sort remaining routes by earliest arrival time
-6. Select two routes: the fastest (earliest arrival), and from the rest, the one with the earliest "leave home by" time
-7. Flag the fastest route as `fastest: true`
-8. Return JSON
+5. Calculate `leave_by` = first leg departure time − origin stop's `walk_minutes`
+6. Calculate `arrive_by` = last leg arrival time + destination stop's `walk_minutes`
+7. Skip the route if `leave_by` is already in the past
+8. Sort remaining routes by earliest `arrive_by` time
+9. Select two routes: the fastest (earliest `arrive_by`), and from the rest, the one with the earliest `leave_by` time
+10. Flag the fastest route as `fastest: true`
+11. Return JSON
 
 ### Response Format
 
 ```json
 {
   "generated_at": "2026-03-21T07:45:00+01:00",
+  "from": "home",
+  "to": "work",
+  "origin": "Hemma",
+  "destination": "Jobbet",
   "routes": [
     {
-      "name": "Buss från Koloniområdet",
-      "walk_minutes": 3,
-      "leave_home_by": "07:48",
+      "name": "Från Koloniområdet",
+      "leave_by": "07:48",
       "departure": "07:51",
       "arrival": "08:37",
+      "arrive_by": "08:39",
       "transfers": 2,
-      "legs": ["Buss 816", "T17", "Pendeltåg 41"],
+      "legs": ["🚌 816", "🚇 17", "🚆 41"],
       "transfer_stations": ["Skarpnäck", "T-Centralen"],
       "fastest": true
     },
     {
-      "name": "T-bana från Skarpnäck",
-      "walk_minutes": 12,
-      "leave_home_by": "07:40",
+      "name": "Från Skarpnäck",
+      "leave_by": "07:40",
       "departure": "07:52",
       "arrival": "08:42",
+      "arrive_by": "08:44",
       "transfers": 1,
-      "legs": ["T17", "Pendeltåg 41"],
+      "legs": ["🚇 17", "🚆 41"],
       "transfer_stations": ["T-Centralen"],
       "fastest": false
     }
@@ -253,6 +306,7 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
 
 ### Error Handling
 
+- If `from` or `to` is not a valid location key, return HTTP 400 with `{"error": "Unknown location: <key>"}`
 - If the SL API returns no journeys for a route, that route is omitted from the response
 - If all API calls fail, return `{"error": "Could not fetch trip data", "routes": []}`
 - HTTP errors from the SL API are caught per-route (one failing route doesn't block others)
@@ -268,23 +322,29 @@ Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
 
 ### Behavior
 
-1. On page load, fetch `/api/routes` via `fetch()`
-2. Render route cards sorted by arrival time
-3. Fastest route is visually highlighted (e.g. green border or background)
-4. Each card shows:
-   - Route name
-   - "Leave home by" time
-   - Departure time from stop
-   - Arrival time at Solna
+1. On page load, fetch `/api/routes?from=home&to=work` via `fetch()`
+2. Display a direction toggle with two buttons: "→ Jobbet" and "→ Hemma"
+3. Default selection: "→ Jobbet" (home→work)
+4. Toggling direction fetches `/api/routes?from=work&to=home` (or vice versa)
+5. Render route cards sorted by arrival time
+6. Fastest route is visually highlighted (green border/background)
+7. Each card shows:
+   - Route name (from response)
+   - "Leave by" time (label adapts: "Gå hemifrån" / "Gå från jobbet" based on `origin` in response)
+   - Arrival time at final destination (`arrive_by`, including walk from stop)
    - Transit legs with transport mode icons (e.g. "🚌 816 → 🚇 17 → 🚆 41")
    - Transfer stations (e.g. "Byte vid Skarpnäck, T-Centralen")
-5. Refresh button calls `location.reload()`
-6. Loading state while fetching
-7. Error state if fetch fails
+8. Refresh button reloads current direction
+9. Loading state while fetching
+10. Error state if fetch fails
+
+### Direction Toggle
+
+The toggle is a pair of buttons at the top of the page. The active direction is visually highlighted. Tapping the other button switches direction and triggers a new fetch. The frontend reads `origin` and `destination` from the response to render context-aware labels (e.g. "Framme vid Jobbet" vs "Framme hemma").
 
 ### No Framework
 
-Plain HTML + CSS + minimal vanilla JS (only for fetch + DOM rendering + refresh button). No build step.
+Plain HTML + CSS + minimal vanilla JS (only for fetch + DOM rendering + direction toggle). No build step.
 
 ---
 
@@ -319,7 +379,9 @@ kiro-dev-workshop/
 | No caching | Every request triggers fresh API calls. Acceptable for a personal tool with infrequent use. |
 | No authentication | Single-user personal tool. |
 | Separate CDK stacks | ACM certificate must be in us-east-1; keeping it in its own stack is cleaner than cross-region constructs. |
-| Static route config | Routes defined as a Python dict in the Lambda code. No database needed. |
+| Location-based config | Locations with stops defined as a Python dict. Supports bidirectional routing without duplicating stop data. |
+| `from`/`to` query params | More flexible than a single `direction` enum. Maps directly to location keys and is extensible if more locations are added. |
 | OAC for both origins | Origin Access Control for S3 and Lambda function URL. More security can be added later. |
-| `calc_number_of_trips=1` | We only need the next available trip per route. Keeps responses small and fast. |
+| `calc_number_of_trips=3` | Fetch a few trips per route to find one that's still catchable after accounting for walk time. |
 | `calc_one_direction=true` | Prevents the planner from returning trips that depart before now. |
+| No CDK changes needed | CloudFront `/api/*` behavior already forwards query strings to Lambda via `ALL_VIEWER_EXCEPT_HOST_HEADER` origin request policy. |
