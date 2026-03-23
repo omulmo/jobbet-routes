@@ -1,29 +1,29 @@
 # Progress
 
 ## What Works
-- Full infrastructure deployed via CDK (ACM cert, S3, Lambda, CloudFront, Route 53)
-- CloudFront → S3 with OAC (static frontend)
-- CloudFront → Lambda function URL with OAC (API)
-- Bidirectional routing: `from`/`to` query params, LOCATIONS dict with home and work
-- `arrive_by` calculation includes destination stop walk_minutes
-- Direction toggle UI ("→ Jobbet" / "→ Hemma") with context-aware labels
-- Two-route selection: fastest arrival + earliest departure from remaining routes
-- Lambda fetches 3 trips per route, iterates to find first catchable departure
-- Transfer station display with deduplication (FR-9, FR-10)
-- Transport mode icons on legs: 🚇 metro, 🚌 bus, 🚆 train, 🚊 tram (FR-11)
-- Route names derived from origin stop ("Från Koloniområdet")
-- HTTP 400 for unknown location keys
-- All emoji in Python code use named unicode escape constants
-- SVG favicon with 🚉 emoji
-- Fast deploy script for code iteration
-- Live at https://jobbet.mulmo.name
+- Domain model: Location, Stop, Trip, AppState with serialization, validation, walk-time calc, transfer dedup
+- `GET /api/routes` endpoint: fetches SL API for all stop combinations, selects fastest + next departure
+- S3 state persistence with `default_state.json` fallback
+- HTTP router (handler.py) dispatching to routes module
+- Local dev server with in-memory state
+- 38 unit tests passing (models, state, routes, handler)
+- CDK stack compiles (S3 buckets, Lambda, CloudFront, Route 53, Secrets Manager)
 
-## What's Next
-- Solution design update for: persistence layer, CRUD API endpoints, stop discovery API, geo-location resolution, trip management, frontend management views, layered architecture (TR-8)
-- Infrastructure changes: rename to trips.mulmo.name, add persistence (DynamoDB or similar), possibly new API endpoints
-- Implementation of FR-6 (location CRUD), FR-13 (geo-location), FR-14 (stop discovery), FR-15 (trips), FR-16 (persistence)
+## What's Been Scrapped
+- `locations.py`, `trips.py` — CRUD modules built bottom-up without consumers. Will be redesigned API-first when the settings UI increment needs them.
+- DynamoDB — replaced with S3 single JSON document early in development.
+
+## What's Next (see todo.md)
+- Increment 2: OpenAPI spec for `GET /api/routes`, local testing, deploy
+- Increment 3: Dynamic main view (trip-driven route display)
+- Increment 4: Settings UI + CRUD API (designed API-first)
+- Increment 5: Geocoding
+- Increment 6: Nearby stop discovery
+- Increment 7: Rename jobbet → trips
+- Increment 8: Smoke tests
 
 ## Known Issues
 - `npx cdk` swallows stdout — must use `./node_modules/.bin/cdk` directly
 - SL API `calc_number_of_trips` max is 3 (4+ returns HTTP 400)
 - `leg.origin.disassembledName` at transfers = platform ID, not station name
+- CDK stack names still say `Jobbet*` — rename deferred to increment 7

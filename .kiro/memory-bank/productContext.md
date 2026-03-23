@@ -11,12 +11,14 @@ A personal tool for a Stockholm commuter to quickly check the fastest public tra
 
 ## User Experience
 - Mobile-first: designed for quick phone checks before leaving
-- Direction toggle: switch between trip and its reverse with one tap
+- Direction toggle: derived from first trip in ordered list, switch between trip and its reverse with one tap
 - Route cards show leave-by time, arrive-by time, transit legs with mode icons, and transfer stations
-- Location/stop/trip management through the UI (requirements defined, implementation pending)
+- Settings view for managing locations, stops, and trips
+- Stop discovery: find nearby stops from location coordinates, auto-calculate walking time
+- Geo-location: use browser GPS or enter address to set location coordinates
 
-## Domain Model (evolving)
+## Domain Model
 - **Location**: named place with geo-coordinates and associated transit stops (e.g. "Hemma", "Jobbet")
-- **Stop**: transit stop/station belonging to a location, with stop ID and walk_minutes from the location
-- **Trip**: ordered pair of locations (origin → destination)
-- **Route**: a specific journey option derived from pairing origin stops with destination stops
+- **Stop**: transit stop/station belonging to a location, with SL global stop ID and walk_minutes from the location
+- **Trip**: ordered pair of locations (origin → destination), with sort_order for user-defined ordering
+- **Route**: a specific journey option derived at runtime by pairing origin stops with destination stops via SL API

@@ -1,0 +1,32 @@
+{
+  "locations": [
+    {
+      "id": "loc_home",
+      "name": "Hemma",
+      "lat": 59.270755,
+      "lon": 18.114195,
+      "stops": [
+        {"stop_id": "9091001000001835", "name": "Koloniområdet", "walk_minutes": 3},
+        {"stop_id": "9091001000009140", "name": "Skarpnäck", "walk_minutes": 12},
+        {"stop_id": "9091001000009185", "name": "Skogskyrkogården", "walk_minutes": 15}
+      ]
+    },
+    {
+      "id": "loc_work",
+      "name": "Jobbet",
+      "lat": 59.360031,
+      "lon": 18.000109,
+      "stops": [
+        {"stop_id": "9091001001009509", "name": "Solna station", "walk_minutes": 2}
+      ]
+    }
+  ],
+  "trips": [
+    {
+      "id": "trip_default",
+      "name": "Jobbet",
+      "origin_id": "loc_home",
+      "destination_id": "loc_work"
+    }
+  ]
+}

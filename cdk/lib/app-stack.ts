@@ -8,6 +8,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as path from 'path';
 
 interface AppStackProps extends cdk.StackProps {
@@ -20,8 +21,19 @@ export class AppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AppStackProps) {
     super(scope, id, props);
 
-    // S3 bucket for frontend
-    const bucket = new s3.Bucket(this, 'Frontend', {
+    // S3 bucket for app state (private, Lambda-only access)
+    const stateBucket = new s3.Bucket(this, 'StateBucket', {
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+    });
+
+    // Secrets Manager for Trafiklab API key
+    const secret = new secretsmanager.Secret(this, 'TrafiklabApiKey', {
+      description: 'Trafiklab API key for Trips app',
+    });
+
+    // S3 bucket for frontend (public via CloudFront)
+    const frontendBucket = new s3.Bucket(this, 'Frontend', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });
@@ -30,9 +42,25 @@ export class AppStack extends cdk.Stack {
     const fn = new lambda.Function(this, 'Handler', {
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda'), {
+        exclude: ['.*', '__pycache__', 'test_*', 'dev_server.py', 'requirements.txt'],
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install -r requirements.txt -t /asset-output && cp *.py /asset-output/',
+          ],
+        },
+      }),
       timeout: cdk.Duration.seconds(30),
+      environment: {
+        STATE_BUCKET: stateBucket.bucketName,
+        SECRET_NAME: secret.secretName,
+      },
     });
+
+    stateBucket.grantReadWrite(fn);
+    secret.grantRead(fn);
 
     const fnUrl = fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.AWS_IAM,
@@ -41,7 +69,7 @@ export class AppStack extends cdk.Stack {
     // CloudFront distribution
     const distribution = new cloudfront.Distribution(this, 'CDN', {
       defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
+        origin: origins.S3BucketOrigin.withOriginAccessControl(frontendBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
       additionalBehaviors: {
@@ -79,7 +107,7 @@ export class AppStack extends cdk.Stack {
     // Deploy frontend to S3
     new s3deploy.BucketDeployment(this, 'DeployFrontend', {
       sources: [s3deploy.Source.asset(path.join(__dirname, '../../frontend'))],
-      destinationBucket: bucket,
+      destinationBucket: frontendBucket,
       distribution,
       distributionPaths: ['/*'],
     });

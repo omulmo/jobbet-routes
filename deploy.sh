@@ -12,7 +12,11 @@ source "$ENV_FILE"
 
 deploy_lambda() {
   echo "→ Deploying Lambda..."
-  (cd lambda && zip -qr /tmp/lambda.zip handler.py)
+  rm -rf /tmp/lambda-pkg /tmp/lambda.zip
+  mkdir /tmp/lambda-pkg
+  pip install -q -r lambda/requirements.txt -t /tmp/lambda-pkg
+  cp lambda/*.py /tmp/lambda-pkg/
+  (cd /tmp/lambda-pkg && zip -qr /tmp/lambda.zip .)
   aws lambda update-function-code \
     --function-name "$LAMBDA_NAME" \
     --zip-file fileb:///tmp/lambda.zip \

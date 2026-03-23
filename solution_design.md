@@ -1,33 +1,42 @@
-# Solution Design — Jobbet (jobbet.mulmo.name)
+# Solution Design — Trips (trips.mulmo.name)
 
 ## Architecture
 
 ```
 User (mobile browser)
-  → jobbet.mulmo.name (Route 53 alias)
+  → trips.mulmo.name (Route 53 alias)
   → CloudFront (single distribution)
       ├── /api/*  → Lambda Function URL (Python, eu-north-1)
-      └── /*      → S3 bucket (static HTML + CSS)
+      └── /*      → S3 frontend bucket (static HTML + CSS)
+                        ↕
+                    S3 state bucket (private, eu-north-1)
+                    Secrets Manager (eu-north-1)
+                    SL Journey Planner v2 API
 ```
 
 ## AWS Resources
 
 ### CertificateStack (us-east-1)
 
-- ACM certificate for `jobbet.mulmo.name`
+- ACM certificate for `trips.mulmo.name`
 - DNS validation against the existing `mulmo.name` Route 53 hosted zone
 - Exports the certificate ARN via `CfnOutput` for cross-stack reference
+- Tagged with `Project: TripsApp`
 
 ### AppStack (eu-north-1)
 
-- S3 bucket for static frontend assets (HTML + CSS)
+- S3 frontend bucket — static assets (HTML + CSS), served via CloudFront with OAC, `DESTROY` on stack delete
+- S3 state bucket — private, `BLOCK_ALL` public access, Lambda-only read/write, `RETAIN` on stack delete
 - Lambda function (Python 3.12) with function URL enabled
 - CloudFront distribution with two behaviors:
-  - Default behavior → S3 origin with Origin Access Control (OAC)
+  - Default behavior → S3 frontend bucket origin with OAC
   - `/api/*` behavior → Lambda function URL origin with OAC
-- Custom domain `jobbet.mulmo.name` with ACM certificate from CertificateStack
-- Route 53 A-record alias: `jobbet.mulmo.name` → CloudFront distribution
+- Custom domain `trips.mulmo.name` with ACM certificate from CertificateStack
+- Route 53 A-record alias: `trips.mulmo.name` → CloudFront distribution
 - Imports the existing `mulmo.name` hosted zone via `HostedZone.fromLookup()`
+- Secrets Manager secret containing the Trafiklab API key
+- IAM permissions: Lambda can read/write state bucket, read the secret
+- All resources tagged with `Project: TripsApp`
 
 ### Cross-Stack Reference
 
@@ -35,246 +44,147 @@ The CertificateStack exports the ACM certificate ARN. The AppStack imports it us
 
 ---
 
-## External API: SL Journey Planner v2
+## Persistence — S3 State Document
 
-See [sl-api.md](sl-api.md) for full API documentation, including endpoint details, response structure, and known quirks.
+All user state is stored as a single JSON document (`state.json`) in the private S3 state bucket. The bucket name is passed to Lambda via the `STATE_BUCKET` environment variable.
 
-### Overview
+When no `state.json` exists in S3 (first deploy), the Lambda falls back to `default_state.json` bundled with the Lambda code. This contains the initial Hemma/Jobbet configuration. State is written back to S3 whenever the user modifies locations, stops, or trips through the API.
 
-- Provider: Trafiklab / SL
-- Base URL: `https://journeyplanner.integration.sl.se/v2`
-- Authentication: None required (no API key)
-- Format: JSON
-- Rate limiting: No formal limit, but excessive requests should be avoided
-
-### Endpoints Used
-
-#### Stop Finder (used during development to look up stop IDs)
-
-```
-GET /v2/stop-finder?name_sf={query}&type_sf=any&any_obj_filter_sf=2
-```
-
-Not called at runtime — only used to resolve stop IDs during configuration.
-
-#### Trip Search (called at runtime by Lambda)
-
-```
-GET /v2/trips?type_origin=any&name_origin={origin_id}&type_destination=any&name_destination={destination_id}&calc_number_of_trips=1&calc_one_direction=true
-```
-
-Parameters:
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `type_origin` | `any` | Origin is a stop ID |
-| `name_origin` | e.g. `9091001000001835` | Global stop ID for departure stop |
-| `type_destination` | `any` | Destination is a stop ID |
-| `name_destination` | `9091001001009509` | Global stop ID for Solna station |
-| `calc_number_of_trips` | `1` | Return 1 trip per request |
-| `calc_one_direction` | `true` | Only return trips departing after now |
-
-### Example API Request
-
-```
-GET https://journeyplanner.integration.sl.se/v2/trips?type_origin=any&name_origin=9091001000001835&type_destination=any&name_destination=9091001001009509&calc_number_of_trips=1&calc_one_direction=true
-```
-
-### Example API Response (abbreviated)
-
-The response contains a `journeys` array. Each journey has `legs` (segments of the trip). A journey from Skarpnäcks koloniområde to Solna station might have 5 legs:
+### State Schema
 
 ```json
 {
-  "journeys": [
+  "locations": [
     {
-      "tripDuration": 2880,
-      "interchanges": 2,
-      "legs": [
-        {
-          "origin": {
-            "name": "Skarpnäcks koloniområde, Stockholm",
-            "parent": { "name": "Skarpnäcks koloniområde, Stockholm" },
-            "departureTimePlanned": "2026-03-21T08:49:00Z",
-            "departureTimeEstimated": "2026-03-21T08:49:00Z"
-          },
-          "destination": {
-            "name": "Skarpnäck (på Horisontvägen), Stockholm",
-            "parent": { "name": "Skarpnäck (på Horisontvägen), Stockholm" },
-            "arrivalTimePlanned": "2026-03-21T08:53:00Z",
-            "arrivalTimeEstimated": "2026-03-21T08:53:00Z"
-          },
-          "transportation": {
-            "name": "Buss Buss 816",
-            "disassembledName": "816",
-            "product": { "name": "Buss" }
-          }
-        },
-        {
-          "origin": { "departureTimePlanned": "2026-03-21T08:58:12Z" },
-          "destination": { "arrivalTimePlanned": "2026-03-21T09:04:12Z" },
-          "transportation": { "product": { "name": "Gång" } }
-        },
-        {
-          "origin": {
-            "name": "Skarpnäck, Stockholm",
-            "departureTimePlanned": "2026-03-21T09:04:12Z"
-          },
-          "destination": {
-            "name": "T-Centralen, Stockholm",
-            "arrivalTimePlanned": "2026-03-21T09:23:00Z"
-          },
-          "transportation": {
-            "name": "Tunnelbana tunnelbanans gröna linje 17",
-            "disassembledName": "17"
-          }
-        },
-        {
-          "origin": { "departureTimePlanned": "2026-03-21T09:24:00Z" },
-          "destination": { "arrivalTimePlanned": "2026-03-21T09:30:00Z" },
-          "transportation": { "product": { "name": "Gång" } }
-        },
-        {
-          "origin": {
-            "name": "Stockholm City, Stockholm",
-            "departureTimePlanned": "2026-03-21T09:30:00Z"
-          },
-          "destination": {
-            "name": "Solna, Solna",
-            "arrivalTimePlanned": "2026-03-21T09:37:00Z",
-            "arrivalTimeEstimated": "2026-03-21T09:37:00Z"
-          },
-          "transportation": {
-            "name": "Tåg Pendeltåg 41",
-            "disassembledName": "41"
-          }
-        }
+      "id": "loc_home",
+      "name": "Hemma",
+      "lat": 59.270755,
+      "lon": 18.114195,
+      "address": "Skarpnäcks allé 34",
+      "stops": [
+        {"stop_id": "9091001000009140", "name": "Skarpnäck", "walk_minutes": 12}
       ]
+    }
+  ],
+  "trips": [
+    {
+      "id": "trip_default",
+      "name": "Jobbet",
+      "origin_id": "loc_home",
+      "destination_id": "loc_work"
     }
   ]
 }
 ```
 
-### Key Response Fields
+### Why not DynamoDB?
 
-| Field | Description |
-|-------|-------------|
-| `journeys[].tripDuration` | Total trip duration in seconds |
-| `journeys[].interchanges` | Number of transfers |
-| `journeys[].legs[]` | Array of trip segments (transit + walking) |
-| `legs[].origin.departureTimeEstimated` | Real-time departure (falls back to `departureTimePlanned`) |
-| `legs[].destination.arrivalTimeEstimated` | Real-time arrival (falls back to `arrivalTimePlanned`) |
-| `legs[].transportation.name` | Full transport name (e.g. "Tunnelbana tunnelbanans gröna linje 17") |
-| `legs[].transportation.disassembledName` | Short line number (e.g. "17") |
-| `legs[].transportation.product.name` | Transport type (e.g. "Tunnelbana", "Buss", "Tåg") |
+The app has a single user with a handful of locations and trips. A single JSON document is simpler to reason about, has no table schema to manage, and costs effectively nothing in S3. The entire state fits in a few KB.
 
 ---
 
-## Location Configuration
+## External APIs
 
-Defined as a static Python dict in the Lambda handler. Each location has a display name, geo-coordinates, and one or more associated transit stops with walking distances:
+### SL Journey Planner v2
 
-```python
-LOCATIONS = {
-    "home": {
-        "name": "Hemma",
-        "lat": 59.270755,
-        "lon": 18.114195,
-        "stops": [
-            {"name": "Koloniområdet",    "id": "9091001000001835", "walk_minutes": 3},
-            {"name": "Skarpnäck",        "id": "9091001000009140", "walk_minutes": 12},
-            {"name": "Skogskyrkogården", "id": "9091001000009185", "walk_minutes": 15},
-        ],
-    },
-    "work": {
-        "name": "Jobbet",
-        "lat": 59.360031,
-        "lon": 18.000109,
-        "stops": [
-            {"name": "Solna station", "id": "9091001001009509", "walk_minutes": 2},
-        ],
-    },
-}
+See [sl-api.md](sl-api.md) for full API documentation.
+
+- Base URL: `https://journeyplanner.integration.sl.se/v2`
+- Authentication: None required
+- Format: JSON
+
+#### Trip Search (called at runtime by Lambda)
+
+```
+GET /v2/trips?type_origin=any&name_origin={origin_stop_id}&type_destination=any&name_destination={destination_stop_id}&calc_number_of_trips=3&calc_one_direction=true
 ```
 
-Routes are derived at runtime by pairing each origin location stop with the destination location's stop(s). The `from` and `to` query parameters select which location is origin and which is destination.
+#### Stop Finder — by name (development/debug)
 
-### Walk Minutes Logic
+```
+GET /v2/stop-finder?name_sf={query}&type_sf=any&any_obj_filter_sf=2
+```
 
-Every stop has a `walk_minutes` value representing the walking time between that stop and its parent location. Both ends of a trip may involve walking, so both origin and destination walk times are always accounted for:
+#### Stop Finder — by coordinates (used for stop discovery, FR-14)
 
-- `leave_by` = first leg departure time − origin stop's `walk_minutes` (walk from starting point to departure stop)
-- `arrive_by` = last leg arrival time + destination stop's `walk_minutes` (walk from arrival stop to final destination)
+```
+GET /v2/stop-finder?name_sf={lon}:{lat}:WGS84[dd.ddddd]&type_sf=coord&any_obj_filter_sf=2
+```
 
-Example for `from=home&to=work`:
-- Origin stop: Skarpnäck (walk_minutes: 12) → leave home 12 min before departure
-- Destination stop: Solna station (walk_minutes: 2) → arrive at office 2 min after train arrives
+The coordinate format is `longitude:latitude:WGS84[dd.ddddd]`. Note: longitude comes first.
 
-Example for `from=work&to=home`:
-- Origin stop: Solna station (walk_minutes: 2) → leave office 2 min before departure
-- Destination stop: Skarpnäck (walk_minutes: 12) → arrive home 12 min after metro arrives
+Returns nearby stops with their global IDs, names, and coordinates. The Lambda uses the returned stop coordinates together with the location coordinates to calculate walking distance and estimate `walk_minutes`.
 
-Since routes are derived by pairing origin stops with destination stops, and each location may have multiple stops, the walk times on both sides can vary per route combination.
+### Walking Time Calculation
 
-The route name is derived from the origin stop: e.g. "Från Koloniområdet" or "Från Solna station".
+Walking time is auto-calculated from the straight-line (Haversine) distance between the location and the stop, using an assumed walking speed of 5 km/h with a 1.3× detour factor to approximate real walking paths. The user can override this value manually.
 
-### Stop Reference
+### Geo-Location Resolution (FR-13)
 
-| Stop | Global ID | Type | Location |
-|------|-----------|------|----------|
-| Skarpnäcks koloniområde | `9091001000001835` | Bus stop | home |
-| Skarpnäck (t-banan) | `9091001000009140` | Metro station | home |
-| Skogskyrkogården | `9091001000009185` | Metro station | home |
-| Solna station | `9091001001009509` | Commuter rail station | work |
+Address-to-coordinate resolution uses the SL stop-finder endpoint with `type_sf=any` and `any_obj_filter_sf=12` (streets and addresses). The first result's coordinates are returned. No external geocoding service is needed.
 
-Home address: Lugna gatan 15, 128 38 Skarpnäck (lat 59.270755, lon 18.114195).
+```
+GET /v2/stop-finder?name_sf={address}&type_sf=any&any_obj_filter_sf=12
+```
 
 ---
 
-## Lambda Logic
+## Lambda Logic — Layered Architecture (TR-8)
 
-### Endpoint
+The Lambda handler is organized into layers so the API is reusable by other clients:
 
 ```
-GET /api/routes?from=home&to=work     (default)
-GET /api/routes?from=work&to=home
+handler.py          # HTTP routing, request/response mapping
+├── routes.py       # Route comparison business logic
+├── state.py        # S3 state persistence (load/save)
+└── models.py       # Domain entities, schemas, validation, helpers
 ```
 
-### Query Parameters
+Additional modules (locations CRUD, trips CRUD, geocoding, stop discovery) are added incrementally as vertical slices — designed API-first via OpenAPI, then implemented with tests.
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `from` | `home` | Origin location key (must exist in `LOCATIONS`) |
-| `to` | `work` | Destination location key (must exist in `LOCATIONS`) |
+### API Endpoints (current)
 
-Returns HTTP 400 if either key is not found in `LOCATIONS`.
+```
+GET /api/routes?trip=<trip_id>[&reverse=true]
+```
 
-### Flow
+If `trip` is omitted, uses the first trip in the list. If `reverse=true`, origin and destination are swapped.
 
-1. Parse `from` and `to` from query string, defaulting to `home` and `work`
-2. Look up origin and destination in `LOCATIONS`
-3. For each stop in the origin location, call the SL Trip Planner API against the first stop of the destination location:
+### API Endpoints (planned — not yet implemented)
+
+These will be designed API-first (OpenAPI spec) and built as vertical slices when their UI increment needs them:
+
+- Location + stop CRUD (FR-6)
+- Trip CRUD + reorder (FR-15)
+- Geocoding — address to coordinates (FR-13)
+- Nearby stop discovery (FR-14)
+
+### Routes Endpoint — Detailed Flow
+
+1. Load state from S3
+2. Resolve trip: use `trip` param or first trip in list
+3. Look up origin and destination locations with their stops from state
+4. If `reverse=true`, swap origin and destination
+5. For each origin stop × destination stop combination, call SL Trip Planner:
    ```
    GET /v2/trips?type_origin=any&name_origin={origin_stop_id}&type_destination=any&name_destination={destination_stop_id}&calc_number_of_trips=3&calc_one_direction=true
    ```
-4. From the response, extract:
-   - First leg's departure time
-   - Last leg's arrival time
-   - Transport summary (line names for each non-walking leg)
-5. Calculate `leave_by` = first leg departure time − origin stop's `walk_minutes`
-6. Calculate `arrive_by` = last leg arrival time + destination stop's `walk_minutes`
-7. Skip the route if `leave_by` is already in the past
-8. Sort remaining routes by earliest `arrive_by` time
-9. Select two routes: the fastest (earliest `arrive_by`), and from the rest, the one with the earliest `leave_by` time
-10. Flag the fastest route as `fastest: true`
-11. Return JSON
+6. Extract departure/arrival times, transport summary from response
+7. Calculate `leave_by` = first leg departure − origin stop's `walk_minutes`
+8. Calculate `arrive_by` = last leg arrival + destination stop's `walk_minutes`
+9. Skip routes where `leave_by` is in the past
+10. Sort by earliest `arrive_by`
+11. Select two routes: fastest (earliest `arrive_by`), and from the rest, earliest `leave_by`
+12. Flag fastest as `fastest: true`
+13. Return JSON
 
-### Response Format
+### Routes Response Format
 
 ```json
 {
   "generated_at": "2026-03-21T07:45:00+01:00",
-  "from": "home",
-  "to": "work",
+  "trip_id": "trip_xyz789",
+  "reversed": false,
   "origin": "Hemma",
   "destination": "Jobbet",
   "routes": [
@@ -288,28 +198,51 @@ Returns HTTP 400 if either key is not found in `LOCATIONS`.
       "legs": ["🚌 816", "🚇 17", "🚆 41"],
       "transfer_stations": ["Skarpnäck", "T-Centralen"],
       "fastest": true
-    },
-    {
-      "name": "Från Skarpnäck",
-      "leave_by": "07:40",
-      "departure": "07:52",
-      "arrival": "08:42",
-      "arrive_by": "08:44",
-      "transfers": 1,
-      "legs": ["🚇 17", "🚆 41"],
-      "transfer_stations": ["T-Centralen"],
-      "fastest": false
     }
+  ]
+}
+```
+
+### Nearby Stops Response Format
+
+```json
+{
+  "location_id": "loc_abc123",
+  "stops": [
+    {
+      "stop_id": "9091001000009140",
+      "name": "Skarpnäck",
+      "walk_minutes": 12,
+      "lat": 59.275,
+      "lon": 18.127
+    }
+  ]
+}
+```
+
+### Location Request/Response Format
+
+```json
+{
+  "id": "loc_abc123",
+  "name": "Hemma",
+  "lat": 59.270755,
+  "lon": 18.114195,
+  "address": "Skarpnäcks allé 34",
+  "stops": [
+    {"stop_id": "9091001000009140", "name": "Skarpnäck", "walk_minutes": 12}
   ]
 }
 ```
 
 ### Error Handling
 
-- If `from` or `to` is not a valid location key, return HTTP 400 with `{"error": "Unknown location: <key>"}`
-- If the SL API returns no journeys for a route, that route is omitted from the response
-- If all API calls fail, return `{"error": "Could not fetch trip data", "routes": []}`
-- HTTP errors from the SL API are caught per-route (one failing route doesn't block others)
+- Unknown trip ID → HTTP 404
+- Location not found → HTTP 404
+- Invalid request body → HTTP 400
+- Deleting a location referenced by a trip → cascading delete of those trips (FR-6)
+- SL API failures → per-route error isolation (one failing route doesn't block others)
+- All API calls fail → `{"error": "Could not fetch trip data", "routes": []}`
 
 ---
 
@@ -320,31 +253,43 @@ Returns HTTP 400 if either key is not found in `LOCATIONS`.
 - `index.html` — single page, mobile-first layout
 - `style.css` — styling
 
-### Behavior
+### Views
 
-1. On page load, fetch `/api/routes?from=home&to=work` via `fetch()`
-2. Display a direction toggle with two buttons: "→ Jobbet" and "→ Hemma"
-3. Default selection: "→ Jobbet" (home→work)
-4. Toggling direction fetches `/api/routes?from=work&to=home` (or vice versa)
-5. Render route cards sorted by arrival time
-6. Fastest route is visually highlighted (green border/background)
-7. Each card shows:
-   - Route name (from response)
-   - "Leave by" time (label adapts: "Gå hemifrån" / "Gå från jobbet" based on `origin` in response)
-   - Arrival time at final destination (`arrive_by`, including walk from stop)
+The frontend has two views, toggled via a simple tab/nav:
+
+1. **Main view** — route comparison (default)
+2. **Settings view** — manage locations, stops, and trips
+
+### Main View Behavior
+
+1. On load, fetch `GET /api/routes` (uses default trip)
+2. Direction toggle: re-fetch with `&reverse=true` (FR-12). Labels derived from response `origin`/`destination` fields.
+3. Render route cards sorted by arrival time
+4. Fastest route visually highlighted (green border/background)
+5. Each card shows:
+   - Route name
+   - "Leave by" time
+   - Arrival time at final destination (`arrive_by`)
    - Transit legs with transport mode icons (e.g. "🚌 816 → 🚇 17 → 🚆 41")
    - Transfer stations (e.g. "Byte vid Skarpnäck, T-Centralen")
-8. Refresh button reloads current direction
-9. Loading state while fetching
-10. Error state if fetch fails
+6. Refresh button reloads current direction
+7. Loading and error states
 
-### Direction Toggle
+### Settings View Behavior (planned)
 
-The toggle is a pair of buttons at the top of the page. The active direction is visually highlighted. Tapping the other button switches direction and triggers a new fetch. The frontend reads `origin` and `destination` from the response to render context-aware labels (e.g. "Framme vid Jobbet" vs "Framme hemma").
+Designed and built incrementally — see `todo.md` for delivery order.
 
 ### No Framework
 
-Plain HTML + CSS + minimal vanilla JS (only for fetch + DOM rendering + direction toggle). No build step.
+Plain HTML + CSS + minimal vanilla JS. No build step.
+
+---
+
+## Secrets Management
+
+The Trafiklab API key is stored in AWS Secrets Manager (FR-8). The secret name is passed to Lambda via the `SECRET_NAME` environment variable. Lambda reads the secret at runtime on cold start and caches it for the lifetime of the execution environment.
+
+Note: The SL Journey Planner v2 API currently requires no API key. The secret is provisioned for future Trafiklab APIs that do require one (e.g. if the app expands to use ResRobot or other endpoints). The Lambda reads the secret but falls back gracefully if it's empty or absent.
 
 ---
 
@@ -355,18 +300,63 @@ kiro-dev-workshop/
 ├── cdk/
 │   ├── bin/app.ts                  # CDK app entry, instantiates both stacks
 │   ├── lib/certificate-stack.ts    # ACM cert in us-east-1
-│   ├── lib/app-stack.ts            # S3, Lambda, CloudFront, Route 53 in eu-north-1
+│   ├── lib/app-stack.ts            # S3 buckets, Lambda, CloudFront, Route 53, Secrets Manager
 │   ├── cdk.json
 │   ├── package.json
 │   └── tsconfig.json
 ├── lambda/
-│   └── handler.py
+│   ├── handler.py                  # HTTP routing
+│   ├── routes.py                   # Route comparison logic
+│   ├── state.py                    # S3 state persistence (load/save)
+│   ├── models.py                   # Domain entities, schemas, validation, helpers
+│   ├── default_state.json          # Initial state (Hemma/Jobbet)
+│   └── dev_server.py              # Local dev server with in-memory state
 ├── frontend/
 │   ├── index.html
 │   └── style.css
 ├── requirements.md
-└── solution_design.md
+├── solution_design.md
+└── sl-api.md
 ```
+
+---
+
+## Development Workflow
+
+Each feature is delivered as a vertical slice through the stack:
+
+1. **Domain modeling** — define or extend entities, schemas, and helpers in `models.py`
+2. **API-first design** — specify the endpoint in `openapi.yaml` (request/response schemas, error codes) before writing any implementation
+3. **Implement** — backend endpoint + handler routing
+4. **Test** — unit tests with mocked dependencies
+5. **Frontend** — UI that consumes the new endpoint
+6. **Deploy and verify** — end-to-end against live environment
+
+No stub endpoints. Features don't exist in the router until their increment builds them.
+
+---
+
+## Testing
+
+### Unit Tests (pytest)
+
+- Run with `cd lambda && python3 -m pytest`
+- Test business logic in isolation: route comparison, walk time calculation, transfer deduplication
+- External dependencies (SL API, S3) are mocked using `unittest.mock.patch`
+- Time-dependent logic uses a fixed `datetime.now` via patching
+- Test files live alongside source in `lambda/` (e.g. `test_routes.py`, `test_handler.py`)
+
+### Integration Tests (local dev server)
+
+- A local HTTP server (`lambda/dev_server.py`) serves the frontend on `http://localhost:8000` and proxies `/api/*` to the Lambda handler running locally
+- Uses `default_state.json` as initial state, with an in-memory state store
+- Manual browser testing to verify frontend ↔ API interaction
+- Run with `cd lambda && python3 dev_server.py`
+
+### Smoke Tests (post-deploy)
+
+- Run after `./deploy.sh all` against the live endpoint
+- A script (`smoke_test.sh`) that curls key endpoints and checks for expected HTTP status codes and response shapes
 
 ---
 
@@ -374,14 +364,23 @@ kiro-dev-workshop/
 
 | Decision | Rationale |
 |----------|-----------|
+| S3 state document | Single user with a handful of locations/trips. A single JSON file is simpler than DynamoDB, has no schema to manage, and costs effectively nothing. |
+| Separate S3 buckets | Frontend bucket is public via CloudFront; state bucket is private with `BLOCK_ALL`. Prevents accidental exposure of app state. |
+| State bucket RETAIN | State bucket is retained on stack delete to avoid losing user configuration. Frontend bucket is destroyed since it's regenerated from source. |
+| Default state fallback | `default_state.json` bundled with Lambda provides initial config without a seeding step. First mutation writes to S3. |
 | No API Gateway | CloudFront routes `/api/*` directly to Lambda function URL. Simpler and cheaper for a single-user app. |
-| No Secrets Manager | SL Journey Planner v2 requires no API key. |
+| Secrets Manager for API key | FR-8 requires it. Provisioned even though SL v2 currently needs no key, for forward compatibility. |
 | No caching | Every request triggers fresh API calls. Acceptable for a personal tool with infrequent use. |
-| No authentication | Single-user personal tool. |
+| No authentication | Single-user personal tool (FR-7). |
 | Separate CDK stacks | ACM certificate must be in us-east-1; keeping it in its own stack is cleaner than cross-region constructs. |
-| Location-based config | Locations with stops defined as a Python dict. Supports bidirectional routing without duplicating stop data. |
-| `from`/`to` query params | More flexible than a single `direction` enum. Maps directly to location keys and is extensible if more locations are added. |
-| OAC for both origins | Origin Access Control for S3 and Lambda function URL. More security can be added later. |
+| SL stop-finder for geocoding | Avoids adding a third-party geocoding service. The SL API can resolve Stockholm addresses to coordinates. |
+| SL stop-finder for nearby stops | The `type_sf=coord` parameter returns stops near given coordinates. No additional API needed. |
+| Haversine + detour factor for walk time | Simple, no external routing API needed. 1.3× factor approximates real walking paths. User can override. |
+| Layered Lambda modules | TR-8 requires the API to be reusable. Separating routing, CRUD, and state access makes the logic consumable by other clients. |
+| jsonschema for validation | Single source of truth for input validation. Schemas live alongside domain entities in `models.py`. |
 | `calc_number_of_trips=3` | Fetch a few trips per route to find one that's still catchable after accounting for walk time. |
 | `calc_one_direction=true` | Prevents the planner from returning trips that depart before now. |
-| No CDK changes needed | CloudFront `/api/*` behavior already forwards query strings to Lambda via `ALL_VIEWER_EXCEPT_HOST_HEADER` origin request policy. |
+| OAC for both origins | Origin Access Control for S3 and Lambda function URL. |
+| `Project: TripsApp` tag | NFR-6 requires all resources to be tagged for identification and cost tracking. |
+| Cascading trip deletion | FR-6: deleting a location that is referenced by a trip automatically deletes that trip. Enforced in the locations module. |
+| Trip ordering by list position | Trips are ordered by their position in the JSON array. Reorder endpoint accepts a list of trip IDs in desired order. |
