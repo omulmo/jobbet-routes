@@ -1,16 +1,15 @@
 # Active Context
 
 ## Current Focus
-Increment 2: ship core backend. OpenAPI spec for `GET /api/routes`, local testing, then deploy.
+Increment 2 complete. Next: Increment 3 — dynamic main view (trip-driven route display).
 
 ## Recent Changes
-- Restructured development workflow to vertical slices: requirements → solution design (incl. domain modeling) → API-first (OpenAPI) → implement → test → frontend → deploy
-- Scrapped pre-built CRUD modules (`locations.py`, `trips.py`) and their tests — they were built bottom-up without consumers, will be redesigned API-first when needed
-- Stripped `handler.py` to only `GET /api/routes` — no stub endpoints
-- Updated `todo.md` to incremental vertical slices
-- Updated `solution_design.md` to reflect current state (no unbuilt features described as existing)
-- Updated `.kiro/rules/development-workflow.md` with the new workflow
-- 38 unit tests passing
+- Created `openapi.yaml` for `GET /api/routes` (API-first design)
+- Refactored API: legs are now structured `{line, mode}` objects instead of emoji strings — emoji rendering is a frontend concern (FR-11)
+- Replaced `ICON_*` emoji constants and `MODE_ICONS` in `routes.py` with `MODE_MAP` returning semantic mode names
+- Frontend renders emojis via `MODE_ICONS` JS mapping and `fmtLeg()` helper
+- Updated `solution_design.md` with new routes response format
+- Fixed `deploy.sh`: `pip` → `pip3`, include `*.json` in Lambda package
 
 ## Active Decisions
 - S3 single JSON document for persistence (not DynamoDB — too complex for single user)
@@ -24,6 +23,8 @@ Increment 2: ship core backend. OpenAPI spec for `GET /api/routes`, local testin
 ## Known Gotchas
 - SL Journey Planner v2 `calc_number_of_trips` max is 3 (4+ returns 400)
 - `leg.origin.disassembledName` at transfer points = platform ID, not station name — use `parent.disassembledName`
-- Walking man emoji needs ZWJ chars — always use the named constant `ICON_WALK`
+- Walking man emoji needs ZWJ chars — use `\u200D\u27A1\uFE0F` suffix in frontend JS
+- ZWJ right-facing trick only works on person emojis (🚶), not vehicle emojis (🚌🚇🚆🚊)
+- Emoji rendering is a frontend concern — API returns semantic mode names, not emoji strings
 - `npx cdk` swallows stdout — use `./node_modules/.bin/cdk` directly
 - SL stop-finder coordinate format: longitude comes first (`lon:lat:WGS84[dd.ddddd]`)

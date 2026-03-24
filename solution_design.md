@@ -180,6 +180,8 @@ These will be designed API-first (OpenAPI spec) and built as vertical slices whe
 
 ### Routes Response Format
 
+Each leg is a structured object with `line` (display name) and `mode` (transport type). The frontend maps `mode` to emoji icons (FR-11). Valid modes: `metro`, `bus`, `train`, `tram`, `walk`.
+
 ```json
 {
   "generated_at": "2026-03-21T07:45:00+01:00",
@@ -195,7 +197,11 @@ These will be designed API-first (OpenAPI spec) and built as vertical slices whe
       "arrival": "08:37",
       "arrive_by": "08:39",
       "transfers": 2,
-      "legs": ["🚌 816", "🚇 17", "🚆 41"],
+      "legs": [
+        {"line": "816", "mode": "bus"},
+        {"line": "17", "mode": "metro"},
+        {"line": "41", "mode": "train"}
+      ],
       "transfer_stations": ["Skarpnäck", "T-Centralen"],
       "fastest": true
     }

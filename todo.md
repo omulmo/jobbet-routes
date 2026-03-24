@@ -24,9 +24,11 @@ Each increment is a vertical slice: API + tests + OpenAPI + deploy/verify. No st
 
 ## Increment 2: Ship core backend
 
-- [ ] 2.1 — OpenAPI spec (`openapi.yaml`) for `GET /api/routes`
-- [ ] 2.2 — Local testing: start dev server, verify API + frontend in browser
-- [ ] 2.3 — Deploy and verify end-to-end
+- [x] 2.1 — OpenAPI spec (`openapi.yaml`) for `GET /api/routes`. Refactor the API so that emojis for transportation mode is a UI task, split leg into tuple (id,mode)
+- [x] 2.2 - Update dev server to adhere to new spec
+- [x] 2.3 - Update frontend code to reflect change in routes endpoint
+- [x] 2.4 — Local testing: start dev server, verify API + frontend in browser
+- [ ] 2.5 — Deploy and verify end-to-end
 
 ## Increment 3: Dynamic main view
 

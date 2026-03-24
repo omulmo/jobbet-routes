@@ -14,8 +14,8 @@ deploy_lambda() {
   echo "→ Deploying Lambda..."
   rm -rf /tmp/lambda-pkg /tmp/lambda.zip
   mkdir /tmp/lambda-pkg
-  pip install -q -r lambda/requirements.txt -t /tmp/lambda-pkg
-  cp lambda/*.py /tmp/lambda-pkg/
+  pip3 install -q -r lambda/requirements.txt -t /tmp/lambda-pkg
+  cp lambda/*.py lambda/*.json /tmp/lambda-pkg/
   (cd /tmp/lambda-pkg && zip -qr /tmp/lambda.zip .)
   aws lambda update-function-code \
     --function-name "$LAMBDA_NAME" \

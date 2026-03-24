@@ -11,13 +11,7 @@ from models import find_location, find_trip, deduplicate_transfers
 
 logger = logging.getLogger()
 
-ICON_WALK = "\U0001f6b6\u200d\u2642\ufe0f\u200d\u27a1\ufe0f"
-ICON_METRO = "\U0001f687"
-ICON_BUS = "\U0001f68c"
-ICON_TRAIN = "\U0001f686"
-ICON_TRAM = "\U0001f68a"
-
-MODE_ICONS = {"Tunnelbana": ICON_METRO, "Buss": ICON_BUS, "Tåg": ICON_TRAIN, "Spårvagn": ICON_TRAM}
+MODE_MAP = {"Tunnelbana": "metro", "Buss": "bus", "Tåg": "train", "Spårvagn": "tram"}
 
 API_BASE = "https://journeyplanner.integration.sl.se/v2/trips"
 TZ = ZoneInfo("Europe/Stockholm")
@@ -71,14 +65,14 @@ def process_route(origin_stop, dest_stop):
             for i, leg in enumerate(legs):
                 product_name = leg["transportation"].get("product", {}).get("name", "")
                 if product_name in ("Gång", "footpath"):
-                    transit_legs.append(ICON_WALK)
+                    transit_legs.append({"line": "", "mode": "walk"})
                 else:
                     name = (
                         leg["transportation"].get("disassembledName")
                         or leg["transportation"].get("name", "?")
                     )
-                    icon = MODE_ICONS.get(product_name, "")
-                    transit_legs.append(f"{icon} {name}" if icon else name)
+                    mode = MODE_MAP.get(product_name, "bus")
+                    transit_legs.append({"line": name, "mode": mode})
                 if i > 0:
                     station = leg["origin"].get("parent", {}).get("disassembledName") or leg["origin"].get("name", "")
                     if station:

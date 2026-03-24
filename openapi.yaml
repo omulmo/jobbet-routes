@@ -1,0 +1,91 @@
+openapi: "3.0.3"
+info:
+  title: Trips API
+  version: "1.0"
+paths:
+  /api/routes:
+    get:
+      summary: Compare routes for a trip
+      parameters:
+        - name: trip
+          in: query
+          schema:
+            type: string
+          description: Trip ID. Defaults to first trip.
+        - name: reverse
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Swap origin and destination.
+      responses:
+        "200":
+          description: Route comparison result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutesResponse"
+components:
+  schemas:
+    Leg:
+      type: object
+      required: [line, mode]
+      properties:
+        line:
+          type: string
+          description: Display name of the line (e.g. "17", "816")
+        mode:
+          type: string
+          enum: [metro, bus, train, tram, walk]
+          description: Transport mode. Frontend maps this to icons.
+    Route:
+      type: object
+      required: [name, leave_by, departure, arrival, arrive_by, transfers, legs, transfer_stations, fastest]
+      properties:
+        name:
+          type: string
+        leave_by:
+          type: string
+          description: "HH:MM — when to leave origin (departure minus walk time)"
+        departure:
+          type: string
+          description: "HH:MM — first leg departure"
+        arrival:
+          type: string
+          description: "HH:MM — last leg arrival"
+        arrive_by:
+          type: string
+          description: "HH:MM — arrival at destination (arrival plus walk time)"
+        transfers:
+          type: integer
+        legs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Leg"
+        transfer_stations:
+          type: array
+          items:
+            type: string
+        fastest:
+          type: boolean
+    RoutesResponse:
+      type: object
+      required: [generated_at, trip_id, reversed, origin, destination, routes]
+      properties:
+        generated_at:
+          type: string
+          format: date-time
+        trip_id:
+          type: string
+        reversed:
+          type: boolean
+        origin:
+          type: string
+        destination:
+          type: string
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Route"
+        error:
+          type: string

@@ -22,7 +22,9 @@
 - CDK requires `CDK_DEFAULT_ACCOUNT` env var since stacks use explicit account/region
 - CloudFront `/api/*` behavior forwards query strings via `ALL_VIEWER_EXCEPT_HOST_HEADER` origin request policy
 - SL stop-finder supports coordinate lookup: `name_sf=lon:lat:WGS84[dd.ddddd]&type_sf=coord` (longitude first)
-- SL stop-finder supports address lookup: `name_sf=address&type_sf=any&any_obj_filter_sf=12`
+- ZWJ right-facing emoji trick (`\u200D\u27A1\uFE0F`) only works on person emojis, not vehicles
+- `deploy.sh` must use `pip3` (not `pip`) and include `*.json` files in Lambda package
+- Kiro CLI bash tool cannot run long-lived background processes — test APIs by calling handler directly in Python
 - S3 state with `default_state.json` fallback eliminates need for a seeding step
 
 ## Deployment
