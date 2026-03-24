@@ -28,7 +28,7 @@ Each increment is a vertical slice: API + tests + OpenAPI + deploy/verify. No st
 - [x] 2.2 - Update dev server to adhere to new spec
 - [x] 2.3 - Update frontend code to reflect change in routes endpoint
 - [x] 2.4 — Local testing: start dev server, verify API + frontend in browser
-- [ ] 2.5 — Deploy and verify end-to-end
+- [x] 2.5 — Deploy and verify end-to-end
 
 ## Increment 3: Dynamic main view
 
@@ -74,10 +74,11 @@ Enable discovering and adding stops to a location.
 
 ## Increment 7: Rename and polish
 
-- [ ] 7.1 — CDK: rename stacks `Jobbet*` → `Trips*`, hostname `trips.mulmo.name`
-- [ ] 7.2 — Update `deploy.sh`, `setup-infrastructure.sh`, `deploy.env`, `README.md`
-- [ ] 7.3 — Update frontend title/heading
-- [ ] 7.4 — Deploy and verify
+- [x] 7.1 — CDK: rename stacks `Jobbet*` → `Trips*`, hostname `trips.mulmo.name`
+- [x] 7.2 — Update `deploy.sh`, `setup-infrastructure.sh`, `deploy.env`
+- [ ] 7.3 — Update `README.md`
+- [ ] 7.4 — Update frontend title/heading
+- [ ] 7.5 — Deploy and verify
 
 ## Increment 8: Smoke tests
 
