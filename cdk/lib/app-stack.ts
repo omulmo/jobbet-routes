@@ -39,12 +39,27 @@ export class AppStack extends cdk.Stack {
     });
 
     // Lambda function
+    const lambdaDir = path.join(__dirname, '../../lambda');
     const fn = new lambda.Function(this, 'Handler', {
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambda'), {
+      code: lambda.Code.fromAsset(lambdaDir, {
         exclude: ['.*', '__pycache__', 'test_*', 'dev_server.py', 'requirements.txt'],
         bundling: {
+          local: {
+            tryBundle(outputDir: string) {
+              const { execSync } = require('child_process');
+              try {
+                execSync(`pip3 install -r requirements.txt -t "${outputDir}" --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 && cp *.py "${outputDir}/"`, {
+                  cwd: lambdaDir,
+                  stdio: 'inherit',
+                });
+                return true;
+              } catch {
+                return false;
+              }
+            },
+          },
           image: lambda.Runtime.PYTHON_3_12.bundlingImage,
           command: [
             'bash', '-c',

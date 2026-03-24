@@ -7,7 +7,7 @@ echo "→ Bootstrapping CDK..."
 CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 export CDK_DEFAULT_ACCOUNT
 
-HOSTNAME="${1:-jobbet.mulmo.name}"
+HOSTNAME="${1:-trips.mulmo.name}"
 CDK_CONTEXT="-c hostname=$HOSTNAME"
 
 ./node_modules/.bin/cdk bootstrap "aws://$CDK_DEFAULT_ACCOUNT/us-east-1" "aws://$CDK_DEFAULT_ACCOUNT/eu-north-1"
@@ -16,7 +16,7 @@ echo "→ Deploying infrastructure..."
 ./node_modules/.bin/cdk deploy --all --require-approval never $CDK_CONTEXT
 
 echo "→ Saving resource names..."
-STACK="JobbetAppStack"
+STACK="TripsAppStack"
 REGION="eu-north-1"
 
 cat > ../deploy.env <<EOF

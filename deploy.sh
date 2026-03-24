@@ -14,7 +14,7 @@ deploy_lambda() {
   echo "→ Deploying Lambda..."
   rm -rf /tmp/lambda-pkg /tmp/lambda.zip
   mkdir /tmp/lambda-pkg
-  pip3 install -q -r lambda/requirements.txt -t /tmp/lambda-pkg
+  pip3 install -q -r lambda/requirements.txt -t /tmp/lambda-pkg --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12
   cp lambda/*.py lambda/*.json /tmp/lambda-pkg/
   (cd /tmp/lambda-pkg && zip -qr /tmp/lambda.zip .)
   aws lambda update-function-code \
